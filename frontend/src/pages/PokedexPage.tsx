@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
 import Snackbar from "@mui/material/Snackbar";
@@ -41,18 +41,25 @@ export const PokedexPage = () => {
     }
   }, [captureMutation.isError]);
 
-  const mergedItems = list.items.map((pokemon) => ({
-    ...pokemon,
-    captured: identity.captured.includes(pokemon.name),
-  }));
+  const mergedItems = useMemo(
+    () =>
+      list.items.map((pokemon) => ({
+        ...pokemon,
+        captured: identity.captured.includes(pokemon.name),
+      })),
+    [list.items, identity.captured],
+  );
 
-  const handleToggleCapture = (pokemon: Pokemon) => {
-    if (!identity.username) {
-      setPendingCapture(pokemon);
-      return;
-    }
-    captureMutation.mutate({ name: pokemon.name, captured: pokemon.captured });
-  };
+  const handleToggleCapture = useCallback(
+    (pokemon: Pokemon) => {
+      if (!identity.username) {
+        setPendingCapture(pokemon);
+        return;
+      }
+      captureMutation.mutate({ name: pokemon.name, captured: pokemon.captured });
+    },
+    [identity.username, captureMutation],
+  );
 
   const handleLoginSubmit = async (username: string) => {
     await loginMutation.login(username);

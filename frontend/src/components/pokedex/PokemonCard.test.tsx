@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { PokemonCard } from "./PokemonCard";
@@ -55,5 +55,26 @@ describe("PokemonCard", () => {
       "src",
       "http://localhost:8080/icon/Bulbasaur",
     );
+  });
+
+  it("shows a skeleton over the sprite until the image loads, then hides it", () => {
+    render(<PokemonCard pokemon={bulbasaur} onToggleCapture={vi.fn()} />);
+    const image = screen.getByRole("img", { name: "Bulbasaur" });
+    expect(document.querySelector(".MuiSkeleton-circular")).toBeInTheDocument();
+    expect(image).toHaveStyle({ opacity: 0 });
+
+    fireEvent.load(image);
+
+    expect(document.querySelector(".MuiSkeleton-circular")).not.toBeInTheDocument();
+    expect(image).toHaveStyle({ opacity: 1 });
+  });
+
+  it("hides the sprite skeleton even if the image fails to load", () => {
+    render(<PokemonCard pokemon={bulbasaur} onToggleCapture={vi.fn()} />);
+    const image = screen.getByRole("img", { name: "Bulbasaur" });
+
+    fireEvent.error(image);
+
+    expect(document.querySelector(".MuiSkeleton-circular")).not.toBeInTheDocument();
   });
 });

@@ -24,3 +24,10 @@ const FALLBACK_COLOR = "#777777";
 export function typeColor(type: string): string {
   return TYPE_COLORS[type.toLowerCase()] ?? FALLBACK_COLOR;
 }
+
+export function typeGradient(types: (string | undefined | null)[]): string {
+  const colors = types.filter((t): t is string => Boolean(t)).map(typeColor);
+  if (colors.length === 0) return FALLBACK_COLOR;
+  if (colors.length === 1) return colors[0];
+  return `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`;
+}

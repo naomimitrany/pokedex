@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchPokemonPage } from "../api/pokemon";
 import type { Pokemon, SortField, SortOrder } from "../types";
@@ -73,8 +73,13 @@ export const usePokemonList = ({
     }
   }, [loadedPages, hasNextPage, isFetchingNextPage, fetchNextPage, onPagesChange]);
 
+  const items = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data],
+  );
+
   return {
-    items: query.data?.pages.flatMap((page) => page.items) ?? [],
+    items,
     isLoading: query.isPending,
     isFetchingNextPage: query.isFetchingNextPage,
     error: query.isError ? errorMessage(query.error) : null,

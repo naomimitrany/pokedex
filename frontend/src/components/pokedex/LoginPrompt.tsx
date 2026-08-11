@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -6,6 +7,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
+import trainerImg from "../../assets/trainer.webp";
 
 export type LoginPromptProps = {
   open: boolean;
@@ -30,11 +32,32 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Name your trainer</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{ paper: { sx: { position: "relative", overflow: "visible", borderRadius: 3 } } }}
+    >
+      <Avatar
+        src={trainerImg}
+        sx={{
+          width: 110,
+          height: 110,
+          position: "absolute",
+          top: -55,
+          left: "50%",
+          transform: "translateX(-50%)",
+          border: (theme) => `4px solid ${theme.palette.background.paper}`,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
+          bgcolor: "background.paper",
+          "& img": { objectFit: "cover", transform: "scale(1.5)" },
+        }}
+      />
+      <DialogTitle sx={{ textAlign: "center", pt: "64px" }}>Name your trainer</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Pick a trainer name to start capturing Pokémon. No password needed.
+        <DialogContentText sx={{ textAlign: "center", mb: 1 }}>
+          Pick a trainer name to start capturing Pokémon.
         </DialogContentText>
         <TextField
           autoFocus
@@ -48,9 +71,30 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
           helperText={showValidationError ? "Enter a trainer name to continue." : error}
         />
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">
+      <DialogActions sx={{ justifyContent: "center", gap: 1.5, pb: 3, pt: 1 }}>
+        <Button
+          onClick={onClose}
+          sx={{
+            borderRadius: 999,
+            px: 3,
+            textTransform: "none",
+            fontWeight: 600,
+            color: "text.secondary",
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          sx={{
+            borderRadius: 999,
+            px: 4,
+            textTransform: "none",
+            fontWeight: 700,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+          }}
+        >
           Start capturing
         </Button>
       </DialogActions>
