@@ -76,7 +76,7 @@ def _handle_not_logged_in(_error):
     return jsonify({"error": "login required"}), 401
 
 
-def _int_arg(name, default, minimum, maximum=None):
+def _int_arg(name, default, minimum, maximum=None):  # TODO use pydantic instead
     raw = request.args.get(name)
     if not raw:
         return default
@@ -173,8 +173,6 @@ def list_types():
 
 @app.get("/icon/<name>")
 def get_icon(name):
-    # A redirect rather than a proxy, so the browser caches the image under the
-    # upstream URL and we stay out of the image path entirely.
     return redirect(ICON_URL.format(number=_require_pokemon(name)["number"]), code=302)
 
 

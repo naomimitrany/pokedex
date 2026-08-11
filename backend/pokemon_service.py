@@ -1,23 +1,11 @@
-"""Read model for the Pokémon list: caching, filtering, sorting, pagination."""
-
 import math
 import threading
-
 from cachetools import TTLCache, cachedmethod
 
 import db
 
-CACHE_TTL_SECONDS = 90
-
 
 class PokemonService:
-    """Serves pages of Pokémon from a TTL-cached snapshot of the database.
-
-    `db.get()` returns the whole list and costs two seconds every time, so
-    filtering, sorting and paging all run in memory against the snapshot. The
-    database is live, so the TTL forces a reload rather than serving one
-    snapshot forever.
-    """
 
     DEFAULT_PAGE_SIZE = 20
     MAX_PAGE_SIZE = 100
@@ -37,12 +25,9 @@ class PokemonService:
         }
     )
 
-    def __init__(self, ttl_seconds=CACHE_TTL_SECONDS):
+    def __init__(self, ttl_seconds=500):
         self._cache = TTLCache(maxsize=1, ttl=ttl_seconds)
         self._lock = threading.Lock()
-        # `cachedmethod` runs the wrapped method outside `lock`, so a lock alone
-        # would still let every concurrent miss pay the full 2s. `condition`
-        # makes it single-flight: one caller loads, the rest wait for its value.
         self._condition = threading.Condition(self._lock)
 
     @cachedmethod(
@@ -53,20 +38,15 @@ class PokemonService:
     def get_pokemon(self):
         return db.get()
 
-    def clear_cache(self):
-        with self._lock:
-            self._cache.clear()
-
     def find_by_name(self, name):
-        wanted = name.casefold()
         return next(
-            (p for p in self.get_pokemon() if p["name"].casefold() == wanted), None
+            (p for p in self.get_pokemon() if p["name"].lower() == name.lower()), None
         )
 
-    def available_types(self):
+    def available_types(self):  # TODO seperate type one and type two
         pokemon = self.get_pokemon()
         types = {p["type_one"] for p in pokemon} | {p["type_two"] for p in pokemon}
-        return sorted(types - {""})  # an unset type_two is "" here, not null
+        return sorted(types - {""})
 
     def query(
         self,
@@ -89,9 +69,6 @@ class PokemonService:
         total_count = len(results)
         return {
             "items": [
-                # A copy per row: `get_pokemon()` hands back the cached list
-                # itself, so annotating those dicts would persist one user's
-                # captures into the cache and leak them to everyone.
                 {**pokemon, "captured": pokemon["name"] in captured_names}
                 for pokemon in self.paginate(results, page, page_size)
             ],
@@ -121,8 +98,6 @@ class PokemonService:
 
     @staticmethod
     def sort_pokemon(pokemon, sort_by, descending):
-        # `number` repeats across alternate formes, so it cannot order a page on
-        # its own; the unique `name` breaks ties and keeps paging deterministic.
         return sorted(
             pokemon, key=lambda p: (p[sort_by], p["name"]), reverse=descending
         )
