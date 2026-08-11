@@ -31,15 +31,32 @@ const STATS: { key: keyof Pokemon; label: string; color: string }[] = [
   { key: "speed", label: "SPE", color: "#FA92B2" },
 ];
 
-const STAT_MAX = 200;
+const STAT_MAX: Record<string, number> = {
+  hit_points: 300,
+  attack: 200,
+  defense: 300,
+  special_attack: 200,
+  special_defense: 300,
+  speed: 200,
+};
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 `;
 
-function StatBar({ label, value, color }: { label: string; value: number; color: string }) {
-  const pct = Math.min(100, (value / STAT_MAX) * 100);
+function StatBar({
+  label,
+  value,
+  color,
+  max,
+}: {
+  label: string;
+  value: number;
+  color: string;
+  max: number;
+}) {
+  const pct = Math.min(100, (value / max) * 100);
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
       <Typography
@@ -278,7 +295,13 @@ export const PokemonCard = memo(function PokemonCard({
 
           <Stack spacing={0.5} sx={{ mt: 0.5 }}>
             {STATS.map(({ key, label, color }) => (
-              <StatBar key={label} label={label} value={pokemon[key] as number} color={color} />
+              <StatBar
+                key={label}
+                label={label}
+                value={pokemon[key] as number}
+                color={color}
+                max={STAT_MAX[key]}
+              />
             ))}
           </Stack>
         </Stack>

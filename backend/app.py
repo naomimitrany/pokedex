@@ -9,9 +9,6 @@ from flask_cors import CORS
 from accounts import Accounts
 from pokemon_service import PokemonService
 
-# Keyed by dex number, not name: the dataset's names are display strings
-# ("Nidoran♀", "VenusaurMega Venusaur") that no image host indexes by. Alternate
-# formes share their base number, so they show the base Pokémon's artwork.
 ICON_URL = (
     "https://raw.githubusercontent.com/PokeAPI/sprites/master"
     "/sprites/pokemon/other/official-artwork/{number}.png"
@@ -19,7 +16,6 @@ ICON_URL = (
 
 app = Flask(__name__)
 
-# Regenerated on every start, so sessions die with the process.
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 app.config.update(
