@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-import db
+import pokemon_service
 
 app = Flask(__name__)
 
@@ -10,7 +10,7 @@ def get_icon_url(name:str):
 
 @app.route('/')
 def hello():
-    data = db.get()
+    data = pokemon_service.get_pokemon()
     return jsonify(data)
 
 
