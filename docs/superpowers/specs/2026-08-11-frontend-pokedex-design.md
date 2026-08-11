@@ -138,10 +138,12 @@ client state).
 
 ## Theming
 
-- MUI `ThemeProvider` with light and dark palettes. Default mode follows
-  `prefers-color-scheme` via `useMediaQuery('(prefers-color-scheme: dark)')`; a
-  manual `ThemeToggle` overrides it, persisted to `localStorage` so the override
-  survives reloads.
+- MUI `ThemeProvider` with light and dark palettes. Precedence: if `localStorage` has
+  a stored manual override, use it; otherwise default to the OS preference via
+  `useMediaQuery('(prefers-color-scheme: dark)')`. This means a first-ever visit (no
+  stored override) always renders in the user's OS light/dark setting, and the manual
+  `ThemeToggle` is what writes an override to `localStorage`, which then wins on every
+  subsequent load regardless of OS setting changes.
 
 ## Login/accounts scope note
 
