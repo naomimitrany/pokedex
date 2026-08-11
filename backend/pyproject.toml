@@ -1,2 +1,9 @@
 [tool.black]
 line-length = 88
+# db.py is the provided DB abstraction and the assignment forbids modifying it.
+# force-exclude wins even when black is pointed at the file explicitly.
+force-exclude = "db\\.py"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
