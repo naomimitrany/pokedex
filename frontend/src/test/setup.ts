@@ -1,4 +1,8 @@
 import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+
+afterEach(cleanup);
 
 // jsdom has no matchMedia; MUI's ThemeProvider (colorSchemes) reads it on
 // every mount, including in tests that never touch the "system" mode.
