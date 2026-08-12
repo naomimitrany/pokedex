@@ -1,6 +1,6 @@
 import math
 import threading
-from cachetools import TTLCache, cachedmethod
+from cachetools import TTLCache, cachedmethod, keys
 
 import db
 
@@ -8,29 +8,61 @@ import db
 class PokemonService:
     DEFAULT_PAGE_SIZE = 20
     MAX_PAGE_SIZE = 100
+    QUERY_CACHE_SIZE = 256
 
     def __init__(self, ttl_seconds=500):
         self._lock = threading.Lock()
-        self._cache = TTLCache(maxsize=1, ttl=ttl_seconds)
+        self._snapshot_cache = TTLCache(maxsize=1, ttl=ttl_seconds)
         self._condition = threading.Condition(self._lock)
 
+        self._query_lock = threading.Lock()
+        self._query_cache = TTLCache(maxsize=self.QUERY_CACHE_SIZE, ttl=ttl_seconds)
+
     @cachedmethod(
-        lambda self: self._cache,
+        lambda self: self._snapshot_cache,
         lock=lambda self: self._lock,
         condition=lambda self: self._condition,
     )
+    def _snapshot(self):
+        """The one place `db.get()` is called.
+
+        Computes the raw list alongside everything derived from a full pass
+        over it -- a name lookup dict and the sorted type list -- so those
+        derivations happen once per snapshot instead of once per request.
+        """
+        pokemon = db.get()
+        types = {p.get("type_one", "") for p in pokemon} | {
+            p.get("type_two", "") for p in pokemon
+        }
+        return {
+            "pokemon": pokemon,
+            "by_name": {p["name"].lower(): p for p in pokemon},
+            "types": sorted(types - {""}),
+        }
+
     def get_pokemon(self):
-        return db.get()
+        return self._snapshot()["pokemon"]
 
     def find_by_name(self, name):
-        return next(
-            (p for p in self.get_pokemon() if p["name"].lower() == name.lower()), None
-        )
+        return self._snapshot()["by_name"].get(name.lower())
 
     def available_types(self):
-        pokemon = self.get_pokemon()
-        types = {p["type_one"] for p in pokemon} | {p["type_two"] for p in pokemon}
-        return sorted(types - {""})
+        return self._snapshot()["types"]
+
+    @cachedmethod(
+        lambda self: self._query_cache,
+        key=lambda self, type_name, text, sort_by, order: keys.hashkey(
+            id(self._snapshot()), type_name, text, sort_by, order
+        ),
+        lock=lambda self: self._query_lock,
+    )
+    def _filtered_sorted(self, type_name, text, sort_by, order):
+        results = self._snapshot()["pokemon"]
+        if type_name:
+            results = self.filter_by_type(results, type_name)
+        if text:
+            results = self.filter_by_text(results, text)
+        return self.sort_pokemon(results, sort_by, descending=order == "desc")
 
     def query(
         self,
@@ -42,13 +74,7 @@ class PokemonService:
         text=None,
         captured_names=frozenset(),
     ):
-        results = self.get_pokemon()
-
-        if type_name:
-            results = self.filter_by_type(results, type_name)
-        if text:
-            results = self.filter_by_text(results, text)
-        results = self.sort_pokemon(results, sort_by, descending=order == "desc")
+        results = self._filtered_sorted(type_name, text, sort_by, order)
 
         total_count = len(results)
         return {
