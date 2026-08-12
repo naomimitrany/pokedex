@@ -30,7 +30,7 @@ export const PokemonGrid = ({
   onRetry,
   onToggleCapture,
   pageSize,
-  restoringScroll,
+  restoredCount = 0,
 }: {
   items: Pokemon[];
   capturedNames: Set<string>;
@@ -43,7 +43,7 @@ export const PokemonGrid = ({
   onRetry: () => void;
   onToggleCapture: (pokemon: Pokemon, captured: boolean) => void;
   pageSize: number;
-  restoringScroll?: boolean;
+  restoredCount?: number;
 }) => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -110,22 +110,26 @@ export const PokemonGrid = ({
   return (
     <Box>
       <Grid container spacing={2}>
-        {items.map((pokemon) => (
+        {items.map((pokemon, index) => (
           <Grid
             key={pokemon.name}
             size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
-            // Skipped while a saved scroll offset is being restored. A restore fetch
-            // inserts every card for the target pages in one commit, and content-visibility
-            // only settles which off-screen cards get skip-sized down to containIntrinsicSize
-            // on a later paint -- with the old per-page walk that settling had already
-            // happened (each page got its own paint, seconds apart, before the final jump).
-            // Landing scrollTo() in that same pre-settle window means whichever cards land
-            // above the target get (de)promoted right as/after the jump, nudging the
-            // container's scrollHeight by however far their real height was from the
-            // estimate. Rendering at full size for that one restore pass costs an extra
-            // layout, but guarantees the jump lands where it was saved.
+            // The first `restoredCount` cards were part of the initial
+            // collapsed restore fetch (see PokedexPage's `restoredCount`
+            // prop, derived from useScrollRestoration's saved page count).
+            // They stay exempt from content-visibility for the life of this
+            // mount -- not just until the scroll position is restored --
+            // because toggling content-visibility back on right after the
+            // jump lets off-screen cards *above* the restored viewport
+            // collapse to their containIntrinsicSize estimate, which can
+            // shift everything below them (including the viewport we just
+            // landed on) by however far that estimate is from their real
+            // height. Paying full layout cost once for a bounded batch
+            // (capped by MAX_AUTO_RESTORE_PAGES) avoids ever fighting that
+            // shift. Cards loaded afterward via ordinary infinite scroll
+            // get the normal content-visibility treatment.
             sx={
-              restoringScroll
+              index < restoredCount
                 ? undefined
                 : {
                     contentVisibility: "auto",
