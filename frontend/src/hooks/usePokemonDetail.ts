@@ -20,6 +20,12 @@ export const usePokemonDetail = (name: string) => {
     queryKey: ["pokemonDetail", name.toLowerCase()],
     queryFn: () => fetchPokemonDetail(name),
     initialData,
+    // Without a staleTime, initialData (the record we already have from the
+    // list, passed via router state) is treated as stale the instant it's
+    // set, so refetchOnMount fires anyway -- defeating the point of passing
+    // it. Matches the list query's staleTime (usePokemonList.ts), which is
+    // itself bounded by the backend's snapshot cache TTL.
+    staleTime: 500_000,
   });
 
   const notFound =
