@@ -61,15 +61,56 @@ describe("FilterBar", () => {
     const onChange = vi.fn();
     const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
     render(<FilterBar types={[]} filters={baseFilters} onChange={onChange} />);
-    await user.click(screen.getByRole("button", { name: /descending/i }));
+    await user.click(screen.getByRole("button", { name: /^sort$/i }));
+    await user.click(await screen.findByRole("button", { name: /descending/i }));
     expect(onChange).toHaveBeenCalledWith({ order: "desc" });
+  });
+
+  it("selecting a sort field calls onChange with the new field", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    render(<FilterBar types={[]} filters={baseFilters} onChange={onChange} />);
+    await user.click(screen.getByRole("button", { name: /^sort$/i }));
+    await user.click(await screen.findByText("Name"));
+    expect(onChange).toHaveBeenCalledWith({ sortBy: "name" });
+  });
+
+  it("doesn't stomp newly typed characters when the parent echoes back a stale committed value", async () => {
+    // Regression: typing "char", pausing long enough for the debounce to
+    // commit, then immediately continuing to type "izard" used to race
+    // against the parent re-rendering with the just-committed filters.q="char"
+    // prop. The sync-back effect blindly applied that prop, snapping the
+    // field back to "char" and silently erasing "izard".
+    const onChange = vi.fn();
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
+    const { rerender } = render(
+      <FilterBar types={["Fire", "Water"]} filters={baseFilters} onChange={onChange} />,
+    );
+
+    await user.type(screen.getByLabelText(/search/i), "char");
+    vi.advanceTimersByTime(300);
+    expect(onChange).toHaveBeenCalledWith({ q: "char" });
+
+    await user.type(screen.getByLabelText(/search/i), "izard");
+
+    // Simulate the parent's round-trip finally landing with the committed value.
+    rerender(
+      <FilterBar
+        types={["Fire", "Water"]}
+        filters={{ ...baseFilters, q: "char" }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByLabelText(/search/i)).toHaveValue("charizard");
   });
 
   it("changing page size calls onChange with the new size", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime });
     render(<FilterBar types={[]} filters={baseFilters} onChange={onChange} />);
-    await user.click(screen.getByLabelText(/per page/i));
+    await user.click(screen.getByRole("button", { name: /more options/i }));
+    await user.click(await screen.findByLabelText(/per page/i));
     await user.click(await screen.findByRole("option", { name: "10" }));
     expect(onChange).toHaveBeenCalledWith({ pageSize: 10 });
   });

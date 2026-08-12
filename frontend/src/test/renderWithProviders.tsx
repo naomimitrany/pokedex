@@ -6,7 +6,7 @@ import { render, renderHook, type RenderHookOptions, type RenderOptions } from "
 import { MemoryRouter } from "react-router-dom";
 import { theme } from "../theme";
 
-export const createTestQueryClient = () =>
+const createTestQueryClient = () =>
   new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 type ProviderOptions = {

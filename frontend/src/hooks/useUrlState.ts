@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { SortField, SortOrder } from "../types";
-import { ALLOWED_PAGE_SIZES, DEFAULT_PAGE_SIZE, DEFAULT_SORT_FIELD, SORT_FIELDS } from "../constants";
+import {
+  ALLOWED_PAGE_SIZES,
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_SORT_FIELD,
+  MAX_AUTO_RESTORE_PAGES,
+  SORT_FIELDS,
+} from "../constants";
 
 export type FilterState = {
   pageSize: number;
@@ -26,7 +32,8 @@ const parseOrder = (raw: string | null): SortOrder => (raw === "desc" ? "desc" :
 
 const parsePages = (raw: string | null): number => {
   const n = Number(raw);
-  return Number.isInteger(n) && n >= 1 ? n : 1;
+  if (!Number.isInteger(n) || n < 1) return 1;
+  return Math.min(n, MAX_AUTO_RESTORE_PAGES);
 };
 
 export const parseFilterState = (params: URLSearchParams): FilterState => ({
@@ -53,6 +60,18 @@ export const useUrlState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const state = useMemo(() => parseFilterState(searchParams), [searchParams]);
 
+  // Mirrors the latest FilterState, updated synchronously inside
+  // setFilters/setPages (not just via the effect below). react-router's
+  // setSearchParams closes over the params from the last *render*, so two
+  // calls issued back-to-back before a re-render (e.g. a debounced search
+  // update landing in the same tick as the infinite-scroll page tracker)
+  // would otherwise each build on the same stale snapshot and the second
+  // call's navigate() would silently overwrite the first's change.
+  const latestRef = useRef(state);
+  useEffect(() => {
+    latestRef.current = state;
+  }, [state]);
+
   useEffect(() => {
     const canonical = filterStateToParams(state).toString();
     if (canonical !== searchParams.toString()) {
@@ -62,18 +81,20 @@ export const useUrlState = () => {
 
   const setFilters = useCallback(
     (partial: Partial<Omit<FilterState, "pages">>) => {
-      const next: FilterState = { ...state, ...partial, pages: 1 };
+      const next: FilterState = { ...latestRef.current, ...partial, pages: 1 };
+      latestRef.current = next;
       setSearchParams(filterStateToParams(next), { replace: false });
     },
-    [state, setSearchParams],
+    [setSearchParams],
   );
 
   const setPages = useCallback(
     (pages: number) => {
-      const next: FilterState = { ...state, pages };
+      const next: FilterState = { ...latestRef.current, pages };
+      latestRef.current = next;
       setSearchParams(filterStateToParams(next), { replace: true });
     },
-    [state, setSearchParams],
+    [setSearchParams],
   );
 
   return { state, setFilters, setPages };

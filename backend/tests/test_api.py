@@ -70,11 +70,13 @@ class TestSorting:
     def test_descending(self, client):
         body = client.get("/pokemon?order=desc").get_json()
 
+        # Charizard and its Mega forme tie on number (6); the name tie-break
+        # stays ascending even though the primary sort is descending.
         assert names(body) == [
             "Articuno",
             "Squirtle",
-            "CharizardMega Charizard X",
             "Charizard",
+            "CharizardMega Charizard X",
             "Charmander",
             "Bulbasaur",
         ]

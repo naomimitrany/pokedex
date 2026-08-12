@@ -40,6 +40,13 @@ describe("parseFilterState", () => {
       pages: 1,
     });
   });
+
+  it("clamps an excessively large pages value instead of restoring hundreds of pages", () => {
+    // Each restored page costs a real ~2s backend round trip; an unclamped
+    // value from a stale/tampered URL would serially fetch that many pages.
+    const params = new URLSearchParams("pages=500");
+    expect(parseFilterState(params).pages).toBe(15);
+  });
 });
 
 describe("filterStateToParams", () => {
@@ -100,5 +107,21 @@ describe("useUrlState", () => {
     });
     expect(result.current.state.pages).toBe(3);
     expect(result.current.state.q).toBe("char");
+  });
+
+  it("doesn't drop a setFilters call when setPages fires in the same tick", () => {
+    // Regression: the debounced search box (setFilters) and the infinite-scroll
+    // page tracker (setPages) can both fire before either has re-rendered.
+    // Both used to build their patch from the same stale `state` snapshot, so
+    // whichever call reached setSearchParams second clobbered the other's
+    // update instead of merging with it — e.g. an in-flight page-restore
+    // firing right after a keystroke would silently erase what was typed.
+    const { result } = renderHookWithProviders(() => useUrlState());
+    act(() => {
+      result.current.setFilters({ q: "pi" });
+      result.current.setPages(2);
+    });
+    expect(result.current.state.q).toBe("pi");
+    expect(result.current.state.pages).toBe(2);
   });
 });

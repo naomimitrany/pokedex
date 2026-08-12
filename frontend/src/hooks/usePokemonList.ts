@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchPokemonPage } from "../api/pokemon";
 import type { Pokemon, SortField, SortOrder } from "../types";
@@ -21,6 +21,7 @@ export type UsePokemonListResult = {
   items: Pokemon[];
   isLoading: boolean;
   isFetchingNextPage: boolean;
+  isRestoring: boolean;
   error: string | null;
   hasMore: boolean;
   loadMore: () => void;
@@ -50,7 +51,7 @@ export const usePokemonList = ({
   });
 
   const loadedPages = query.data?.pages.length ?? 0;
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch } = query;
 
   useEffect(() => {
     targetRef.current = restoreToPage;
@@ -62,8 +63,13 @@ export const usePokemonList = ({
 
   useEffect(() => {
     if (loadedPages === 0) return;
-    if (loadedPages < targetRef.current && hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
+    // A failed restore fetch must not be retried on every render (mirrors how
+    // the scroll-triggered fetch in PokemonGrid bails out on `error` instead
+    // of looping). Leave the target untouched — a later successful retry()
+    // should resume the restore, not treat the failure as the new target.
+    if (isFetchNextPageError) return;
+    if (loadedPages < targetRef.current && hasNextPage) {
+      if (!isFetchingNextPage) void fetchNextPage();
       return;
     }
     if (!reportedRef.current || loadedPages > targetRef.current) {
@@ -71,24 +77,36 @@ export const usePokemonList = ({
       targetRef.current = loadedPages;
       onPagesChange(loadedPages);
     }
-  }, [loadedPages, hasNextPage, isFetchingNextPage, fetchNextPage, onPagesChange]);
+  }, [
+    loadedPages,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    fetchNextPage,
+    onPagesChange,
+  ]);
 
   const items = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],
     [query.data],
   );
 
+  const loadMore = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
+
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
   return {
     items,
     isLoading: query.isPending,
     isFetchingNextPage: query.isFetchingNextPage,
+    isRestoring: loadedPages > 0 && loadedPages < targetRef.current && !isFetchNextPageError,
     error: query.isError ? errorMessage(query.error) : null,
     hasMore: query.hasNextPage ?? false,
-    loadMore: () => {
-      void query.fetchNextPage();
-    },
-    retry: () => {
-      void query.refetch();
-    },
+    loadMore,
+    retry,
   };
 };

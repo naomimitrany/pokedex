@@ -4,12 +4,7 @@
     {
       "name": "pokedex-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev",
-        "--prefix",
-        "C:\\Projects\\pokedex\\.claude\\worktrees\\frontend-pokedex\\frontend"
-      ],
+      "runtimeArgs": ["run", "dev", "--prefix", "C:\\Projects\\pokedex\\frontend"],
       "port": 5173
     }
   ]

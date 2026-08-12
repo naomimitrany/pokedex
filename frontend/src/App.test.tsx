@@ -77,6 +77,18 @@ describe("App", () => {
     );
   });
 
+  it("self-heals an unknown type from a stale URL instead of retry-looping a 400", async () => {
+    const spy = vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation((q) =>
+      q.type
+        ? Promise.reject(new Error("must be one of ['Fire', 'Water'], got 'Bogus'"))
+        : Promise.resolve(page([pokemon(1)], 1)),
+    );
+    renderWithProviders(<App />, { initialEntries: ["/?type=Bogus"] });
+
+    await waitFor(() => expect(screen.getByText("Mon1")).toBeInTheDocument());
+    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ type: null }));
+  });
+
   it("re-fetches with the selected type when the filter changes", async () => {
     const spy = vi
       .spyOn(pokemonApi, "fetchPokemonPage")

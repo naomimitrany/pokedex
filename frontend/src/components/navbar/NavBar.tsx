@@ -2,22 +2,40 @@ import AppBar from "@mui/material/AppBar";
 import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import CatchingPokemonIcon from "@mui/icons-material/CatchingPokemon";
+import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
+import { getScrollContainer } from "../../utils/scrollContainer";
 
 export const NavBar = () => (
   <AppBar
     position="static"
     elevation={0}
+    enableColorOnDark
     sx={{
       bgcolor: "primary.main",
-      backgroundImage: "linear-gradient(135deg, transparent, rgba(255,255,255,0.1))",
+      color: "#fff",
+      backgroundImage:
+        "linear-gradient(135deg, transparent, rgba(255,255,255,0.1))",
       boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
     }}
   >
     <Toolbar>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexGrow: 1 }}>
-        <CatchingPokemonIcon sx={{ color: "#fff", fontSize: 36 }} />
+      <Stack
+        component={Link}
+        to="/"
+        onClick={() =>
+          getScrollContainer()?.scrollTo({ top: 0, behavior: "smooth" })
+        }
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          flexGrow: 1,
+          textDecoration: "none",
+          color: "inherit",
+          width: "fit-content",
+        }}
+      >
         <Typography
           variant="h6"
           component="h1"
@@ -30,7 +48,7 @@ export const NavBar = () => (
             textShadow:
               "1px 1px 0 rgba(0,0,0,0.3), 2px 2px 0 rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.25)",
             position: "relative",
-            top: "-4px",
+            top: "-7px",
           }}
         >
           Pokédex

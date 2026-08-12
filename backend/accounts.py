@@ -1,23 +1,16 @@
-"""In-memory identities, sessions and captures, all lost on restart.
-
-Logging in claims a username outright, with no password: nothing here survives a
-restart, so credentials would be ceremony. What is enforced is that a caller
-cannot act as someone else -- routes resolve identity from the session cookie.
-"""
-
 import secrets
 import threading
+from collections import defaultdict
 
 
 class Accounts:
     def __init__(self):
         self._lock = threading.Lock()
         self._sessions = {}
-        self._captures = {}
+        self._captures = defaultdict(set)
 
     def login(self, username):
         with self._lock:
-            self._captures.setdefault(username, set())
             session_id = secrets.token_urlsafe(32)
             self._sessions[session_id] = username
             return session_id
@@ -34,11 +27,11 @@ class Accounts:
 
     def capture(self, username, name):
         with self._lock:
-            self._captures.setdefault(username, set()).add(name)
+            self._captures[username].add(name)
 
     def release(self, username, name):
         with self._lock:
-            self._captures.setdefault(username, set()).discard(name)
+            self._captures[username].discard(name)
 
     def captured_names(self, username):
         if username is None:

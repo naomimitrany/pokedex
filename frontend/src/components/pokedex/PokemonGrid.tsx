@@ -8,20 +8,10 @@ import { PokemonCard } from "./PokemonCard";
 import { PokemonCardSkeleton } from "./PokemonCardSkeleton";
 import type { Pokemon } from "../../types";
 
-export type PokemonGridProps = {
-  items: Pokemon[];
-  isLoading: boolean;
-  isFetchingNextPage: boolean;
-  error: string | null;
-  hasMore: boolean;
-  onLoadMore: () => void;
-  onRetry: () => void;
-  onToggleCapture: (pokemon: Pokemon) => void;
-  pageSize: number;
-};
-
 export const PokemonGrid = ({
   items,
+  capturedNames,
+  capturingName,
   isLoading,
   isFetchingNextPage,
   error,
@@ -30,7 +20,19 @@ export const PokemonGrid = ({
   onRetry,
   onToggleCapture,
   pageSize,
-}: PokemonGridProps) => {
+}: {
+  items: Pokemon[];
+  capturedNames: Set<string>;
+  capturingName?: string;
+  isLoading: boolean;
+  isFetchingNextPage: boolean;
+  error: string | null;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  onRetry: () => void;
+  onToggleCapture: (pokemon: Pokemon, captured: boolean) => void;
+  pageSize: number;
+}) => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -57,11 +59,33 @@ export const PokemonGrid = ({
   }
 
   if (error && items.length === 0) {
-    return <ErrorState message={error} onRetry={onRetry} />;
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ErrorState message={error} onRetry={onRetry} />
+      </Box>
+    );
   }
 
   if (items.length === 0) {
-    return <EmptyState title="No Pokémon match your filters." />;
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <EmptyState title="Nothing here..." />
+      </Box>
+    );
   }
 
   return (
@@ -69,7 +93,12 @@ export const PokemonGrid = ({
       <Grid container spacing={2}>
         {items.map((pokemon) => (
           <Grid key={pokemon.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <PokemonCard pokemon={pokemon} onToggleCapture={onToggleCapture} />
+            <PokemonCard
+              pokemon={pokemon}
+              captured={capturedNames.has(pokemon.name)}
+              onToggleCapture={onToggleCapture}
+              captureLoading={pokemon.name === capturingName}
+            />
           </Grid>
         ))}
         {isFetchingNextPage &&
@@ -87,11 +116,15 @@ export const PokemonGrid = ({
       )}
 
       {hasMore ? (
-        <div ref={sentinelRef} data-testid="scroll-sentinel" style={{ height: 1 }} />
+        <div
+          ref={sentinelRef}
+          data-testid="scroll-sentinel"
+          style={{ height: 1 }}
+        />
       ) : (
         <Box sx={{ textAlign: "center", py: 4 }}>
-          <Typography variant="body2" color="text.secondary">
-            That's all of them!
+          <Typography variant="caption" color="text.secondary">
+            Gotta catch 'em all!
           </Typography>
         </Box>
       )}

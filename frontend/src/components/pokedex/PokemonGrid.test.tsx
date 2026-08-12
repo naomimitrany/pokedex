@@ -23,7 +23,9 @@ function pokemon(number: number): Pokemon {
   };
 }
 
-type IOCallback = (entries: Pick<IntersectionObserverEntry, "isIntersecting">[]) => void;
+type IOCallback = (
+  entries: Pick<IntersectionObserverEntry, "isIntersecting">[],
+) => void;
 let ioCallback: IOCallback | null = null;
 
 class IntersectionObserverMock {
@@ -36,6 +38,7 @@ class IntersectionObserverMock {
 }
 
 const baseProps = {
+  capturedNames: new Set<string>(),
   isLoading: false,
   isFetchingNextPage: false,
   error: null as string | null,
@@ -65,7 +68,14 @@ describe("PokemonGrid", () => {
   it("shows an error alert with retry when the initial load fails", async () => {
     const onRetry = vi.fn();
     const user = userEvent.setup();
-    render(<PokemonGrid {...baseProps} items={[]} error="network down" onRetry={onRetry} />);
+    render(
+      <PokemonGrid
+        {...baseProps}
+        items={[]}
+        error="network down"
+        onRetry={onRetry}
+      />,
+    );
     expect(screen.getByText("network down")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /retry/i }));
     expect(onRetry).toHaveBeenCalled();
@@ -73,7 +83,7 @@ describe("PokemonGrid", () => {
 
   it("shows an empty state when there is no error and no items", () => {
     render(<PokemonGrid {...baseProps} items={[]} />);
-    expect(screen.getByText(/no pokémon match/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing here/i)).toBeInTheDocument();
   });
 
   it("renders a card per item and forwards capture toggles", async () => {
@@ -81,17 +91,28 @@ describe("PokemonGrid", () => {
     const user = userEvent.setup();
     const mon1 = pokemon(1);
     render(
-      <PokemonGrid {...baseProps} items={[mon1, pokemon(2)]} onToggleCapture={onToggleCapture} />,
+      <PokemonGrid
+        {...baseProps}
+        items={[mon1, pokemon(2)]}
+        onToggleCapture={onToggleCapture}
+      />,
     );
     expect(screen.getByText("Mon1")).toBeInTheDocument();
     expect(screen.getByText("Mon2")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /capture mon1/i }));
-    expect(onToggleCapture).toHaveBeenCalledWith(mon1);
+    expect(onToggleCapture).toHaveBeenCalledWith(mon1, false);
   });
 
   it("triggers onLoadMore when the sentinel intersects and hasMore is true", () => {
     const onLoadMore = vi.fn();
-    render(<PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore onLoadMore={onLoadMore} />);
+    render(
+      <PokemonGrid
+        {...baseProps}
+        items={[pokemon(1)]}
+        hasMore
+        onLoadMore={onLoadMore}
+      />,
+    );
     expect(ioCallback).not.toBeNull();
     ioCallback?.([{ isIntersecting: true }]);
     expect(onLoadMore).toHaveBeenCalled();
@@ -99,11 +120,30 @@ describe("PokemonGrid", () => {
 
   it("shows an end-of-list message and no sentinel when hasMore is false", () => {
     render(<PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore={false} />);
-    expect(screen.getByText(/that's all of them/i)).toBeInTheDocument();
+    expect(screen.getByText(/gotta catch 'em all/i)).toBeInTheDocument();
   });
 
   it("shows trailing skeletons while fetching the next page", () => {
-    render(<PokemonGrid {...baseProps} items={[pokemon(1)]} isFetchingNextPage pageSize={3} />);
+    render(
+      <PokemonGrid
+        {...baseProps}
+        items={[pokemon(1)]}
+        isFetchingNextPage
+        pageSize={3}
+      />,
+    );
     expect(screen.getAllByTestId("pokemon-card-skeleton")).toHaveLength(3);
+  });
+
+  it("only disables the capture button for the card matching capturingName", () => {
+    render(
+      <PokemonGrid
+        {...baseProps}
+        items={[pokemon(1), pokemon(2)]}
+        capturingName="Mon1"
+      />,
+    );
+    expect(screen.getByRole("button", { name: /capture mon1/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /capture mon2/i })).not.toBeDisabled();
   });
 });

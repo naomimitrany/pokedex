@@ -1,16 +1,34 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import emptyPokeball from "../../assets/empty-pokeball.png";
 
-export type EmptyStateProps = {
+export const EmptyState = ({
+  title,
+  description,
+}: {
   title: string;
   description?: string;
-};
-
-export const EmptyState = ({ title, description }: EmptyStateProps) => (
-  <Box sx={{ textAlign: "center", py: 8 }}>
-    <Typography variant="h6">{title}</Typography>
+}) => (
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      py: 8,
+    }}
+  >
+    <Box
+      component="img"
+      src={emptyPokeball}
+      alt=""
+      sx={{ display: "block", width: 240, opacity: 0.45, mb: 1 }}
+    />
+    <Typography variant="h6" sx={{ color: "text.secondary" }}>
+      {title}
+    </Typography>
     {description && (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
         {description}
       </Typography>
     )}

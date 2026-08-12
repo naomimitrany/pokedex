@@ -9,14 +9,17 @@ import DialogTitle from "@mui/material/DialogTitle";
 import TextField from "@mui/material/TextField";
 import trainerImg from "../../assets/trainer.webp";
 
-export type LoginPromptProps = {
+export const LoginPrompt = ({
+  open,
+  onClose,
+  onSubmit,
+  error,
+}: {
   open: boolean;
   onClose: () => void;
   onSubmit: (username: string) => void | Promise<void>;
   error?: string | null;
-};
-
-export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps) => {
+}) => {
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
 
@@ -37,7 +40,11 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
       onClose={onClose}
       maxWidth="xs"
       fullWidth
-      slotProps={{ paper: { sx: { position: "relative", overflow: "visible", borderRadius: 3 } } }}
+      slotProps={{
+        paper: {
+          sx: { position: "relative", overflow: "visible", borderRadius: 3 },
+        },
+      }}
     >
       <Avatar
         src={trainerImg}
@@ -51,10 +58,12 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
           border: (theme) => `4px solid ${theme.palette.background.paper}`,
           boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
           bgcolor: "background.paper",
-          "& img": { objectFit: "cover", transform: "scale(1.5)" },
+          "& img": { objectFit: "cover" },
         }}
       />
-      <DialogTitle sx={{ textAlign: "center", pt: "64px" }}>Name your trainer</DialogTitle>
+      <DialogTitle sx={{ textAlign: "center", pt: "64px" }}>
+        Name your trainer
+      </DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ textAlign: "center", mb: 1 }}>
           Pick a trainer name to start capturing Pokémon.
@@ -68,7 +77,9 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={showValidationError || Boolean(error)}
-          helperText={showValidationError ? "Enter a trainer name to continue." : error}
+          helperText={
+            showValidationError ? "Enter a trainer name to continue." : error
+          }
         />
       </DialogContent>
       <DialogActions sx={{ justifyContent: "center", gap: 1.5, pb: 3, pt: 1 }}>
@@ -92,6 +103,7 @@ export const LoginPrompt = ({ open, onClose, onSubmit, error }: LoginPromptProps
             px: 4,
             textTransform: "none",
             fontWeight: 700,
+            color: "#fff",
             boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
           }}
         >
