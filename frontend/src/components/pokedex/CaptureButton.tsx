@@ -33,6 +33,8 @@ export const CaptureButton = memo(
           aria-label={`${captured ? "Release" : "Capture"} ${name}`}
           disabled={loading}
           onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             e.currentTarget.blur();
             setIsShaking(true);
             onToggle();

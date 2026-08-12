@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { Route, Routes } from "react-router-dom";
 import { PokemonCard } from "./PokemonCard";
+import { renderWithProviders } from "../../test/renderWithProviders";
 import type { Pokemon } from "../../types";
 
 const bulbasaur: Pokemon = {
@@ -22,7 +24,7 @@ const bulbasaur: Pokemon = {
 
 describe("PokemonCard", () => {
   it("renders the name, number, and both type chips", () => {
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={bulbasaur}
         captured={false}
@@ -36,7 +38,7 @@ describe("PokemonCard", () => {
   });
 
   it("omits the second chip when type_two is empty", () => {
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={{ ...bulbasaur, type_two: "" }}
         captured={false}
@@ -49,7 +51,7 @@ describe("PokemonCard", () => {
   it("shows an uncaptured affordance and captures on click", async () => {
     const onToggleCapture = vi.fn();
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={bulbasaur}
         captured={false}
@@ -62,7 +64,7 @@ describe("PokemonCard", () => {
   });
 
   it("shows a captured affordance when already captured", () => {
-    render(
+    renderWithProviders(
       <PokemonCard pokemon={bulbasaur} captured onToggleCapture={vi.fn()} />,
     );
     expect(
@@ -71,7 +73,7 @@ describe("PokemonCard", () => {
   });
 
   it("uses the icon endpoint for the sprite", () => {
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={bulbasaur}
         captured={false}
@@ -85,7 +87,7 @@ describe("PokemonCard", () => {
   });
 
   it("shows a skeleton over the sprite until the image loads, then hides it", () => {
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={bulbasaur}
         captured={false}
@@ -105,7 +107,7 @@ describe("PokemonCard", () => {
   });
 
   it("hides the sprite skeleton even if the image fails to load", () => {
-    render(
+    renderWithProviders(
       <PokemonCard
         pokemon={bulbasaur}
         captured={false}
@@ -119,5 +121,45 @@ describe("PokemonCard", () => {
     expect(
       document.querySelector(".MuiSkeleton-circular"),
     ).not.toBeInTheDocument();
+  });
+
+  it("links to the pokemon's detail page", () => {
+    renderWithProviders(
+      <PokemonCard
+        pokemon={bulbasaur}
+        captured={false}
+        onToggleCapture={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("link", { name: /bulbasaur/i })).toHaveAttribute(
+      "href",
+      "/pokemon/Bulbasaur",
+    );
+  });
+
+  it("clicking the capture button does not navigate to the detail page", async () => {
+    const onToggleCapture = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PokemonCard
+              pokemon={bulbasaur}
+              captured={false}
+              onToggleCapture={onToggleCapture}
+            />
+          }
+        />
+        <Route path="/pokemon/:name" element={<div>detail page</div>} />
+      </Routes>,
+    );
+
+    const button = screen.getByRole("button", { name: /capture bulbasaur/i });
+    await user.click(button);
+
+    expect(onToggleCapture).toHaveBeenCalledWith(bulbasaur, false);
+    expect(screen.queryByText("detail page")).not.toBeInTheDocument();
   });
 });
