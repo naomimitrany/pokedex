@@ -61,6 +61,12 @@ export const usePokemonList = ({
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
+    // Matches the backend's snapshot cache TTL (pokemon_service.py's
+    // ttl_seconds=500) -- the server can't return different data any sooner
+    // than that, so treating cached pages as fresh for less time than this
+    // only buys pointless refetches (e.g. every list<->detail navigation
+    // re-fetching every already-loaded page) with no chance of new data.
+    staleTime: 500_000,
   });
 
   // The last page's own `page` field, not the pages-array length: a
