@@ -43,6 +43,22 @@ describe("useScrollRestoration", () => {
     expect(result.current).toBe(true);
   });
 
+  it("restores the saved position for a new key switched to after the first key was already restored", () => {
+    sessionStorage.setItem("pokedex:scroll:a", "0");
+    sessionStorage.setItem("pokedex:scroll:b", "500");
+
+    const { result, rerender } = renderHook(
+      ({ key }: { key: string }) => useScrollRestoration(key, true),
+      { initialProps: { key: "pokedex:scroll:a" } },
+    );
+    expect(result.current).toBe(true); // nothing to restore for "a"
+
+    rerender({ key: "pokedex:scroll:b" });
+
+    expect(result.current).toBe(true);
+    expect(main.scrollTo).toHaveBeenCalledWith({ top: 500 });
+  });
+
   it("evicts the oldest tracked scroll key once more than the cap has been used", () => {
     vi.useFakeTimers();
     try {

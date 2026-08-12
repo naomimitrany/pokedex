@@ -27,6 +27,9 @@ const touchScrollKey = (key: string) => {
   sessionStorage.setItem(INDEX_KEY, JSON.stringify(index));
 };
 
+const isAlreadyRestored = (scrollKey: string) =>
+  Number(sessionStorage.getItem(scrollKey)) <= 0;
+
 export const useScrollRestoration = (
   scrollKey: string,
   ready: boolean,
@@ -51,9 +54,20 @@ export const useScrollRestoration = (
 
   // Kept false until the saved scroll offset (if any) is applied, so a
   // restore never renders at the top before jumping down.
-  const [scrollRestored, setScrollRestored] = useState(
-    () => Number(sessionStorage.getItem(scrollKey)) <= 0,
+  const [trackedKey, setTrackedKey] = useState(scrollKey);
+  const [scrollRestored, setScrollRestored] = useState(() =>
+    isAlreadyRestored(scrollKey),
   );
+
+  // Re-derive during render (not an effect) whenever scrollKey changes, so a
+  // switch to a key with its own saved offset re-arms the restore instead of
+  // staying latched `true` from a previous key. Doing this in render rather
+  // than an effect means the caller's "hidden until restored" gate never
+  // gets a chance to flash the new key's content at the old scroll offset.
+  if (scrollKey !== trackedKey) {
+    setTrackedKey(scrollKey);
+    setScrollRestored(isAlreadyRestored(scrollKey));
+  }
 
   useLayoutEffect(() => {
     if (scrollRestored || !ready) return;
