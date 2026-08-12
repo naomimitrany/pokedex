@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import { alpha } from "@mui/material/styles";
 import { NavBar } from "./components/navbar/NavBar";
 import { PokedexPage } from "./pages/PokedexPage";
+import { PokemonDetailPage } from "./pages/PokemonDetailPage";
 
 const App = () => (
   <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -32,6 +33,7 @@ const App = () => (
     >
       <Routes>
         <Route path="/" element={<PokedexPage />} />
+        <Route path="/pokemon/:name" element={<PokemonDetailPage />} />
       </Routes>
     </Box>
   </Box>
