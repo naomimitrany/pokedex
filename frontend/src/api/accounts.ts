@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Identity } from "../types";
+import type { Identity, Pokemon } from "../types";
 
 export const fetchMe = async (): Promise<Identity> => {
   const response = await apiClient.get<Identity>("/me");
@@ -23,5 +23,10 @@ export const capturePokemon = async (name: string): Promise<{ name: string; capt
 
 export const releasePokemon = async (name: string): Promise<{ name: string; captured: boolean }> => {
   const response = await apiClient.delete(`/captures/${encodeURIComponent(name)}`);
+  return response.data;
+};
+
+export const fetchCaptures = async (): Promise<Pokemon[]> => {
+  const response = await apiClient.get<Pokemon[]>("/captures");
   return response.data;
 };
