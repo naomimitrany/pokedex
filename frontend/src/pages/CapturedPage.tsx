@@ -75,7 +75,7 @@ export const CapturedPage = () => {
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       {captured.isLoading ? (
-        <Grid container spacing={2} justifyContent="center">
+        <Grid container spacing={2} sx={{ justifyContent: "center" }}>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <PokemonCardSkeleton />
           </Grid>

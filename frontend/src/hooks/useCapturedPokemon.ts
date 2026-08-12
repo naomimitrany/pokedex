@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCaptures } from "../api/accounts";
 import { getErrorMessage } from "../api/client";
 import { useIdentity } from "./useIdentity";
-import type { Pokemon } from "../types";
 
 export const CAPTURES_QUERY_KEY = ["captures"] as const;
 
