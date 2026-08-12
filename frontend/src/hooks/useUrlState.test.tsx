@@ -11,13 +11,12 @@ describe("parseFilterState", () => {
       order: "asc",
       type: null,
       q: "",
-      pages: 1,
     });
   });
 
   it("parses valid values", () => {
     const params = new URLSearchParams(
-      "page_size=10&sort_by=attack&order=desc&type=Fire&q=char&pages=3",
+      "page_size=10&sort_by=attack&order=desc&type=Fire&q=char",
     );
     expect(parseFilterState(params)).toEqual({
       pageSize: 10,
@@ -25,27 +24,18 @@ describe("parseFilterState", () => {
       order: "desc",
       type: "Fire",
       q: "char",
-      pages: 3,
     });
   });
 
-  it("sanitizes an invalid page_size, sort_by, order, and pages back to defaults", () => {
-    const params = new URLSearchParams("page_size=999&sort_by=nonsense&order=sideways&pages=-2");
+  it("sanitizes an invalid page_size, sort_by, and order back to defaults", () => {
+    const params = new URLSearchParams("page_size=999&sort_by=nonsense&order=sideways");
     expect(parseFilterState(params)).toEqual({
       pageSize: 20,
       sortBy: "number",
       order: "asc",
       type: null,
       q: "",
-      pages: 1,
     });
-  });
-
-  it("clamps an excessively large pages value instead of restoring hundreds of pages", () => {
-    // Each restored page costs a real ~2s backend round trip; an unclamped
-    // value from a stale/tampered URL would serially fetch that many pages.
-    const params = new URLSearchParams("pages=500");
-    expect(parseFilterState(params).pages).toBe(15);
   });
 });
 
@@ -57,7 +47,6 @@ describe("filterStateToParams", () => {
       order: "desc" as const,
       type: "Water",
       q: "saur",
-      pages: 2,
     };
     expect(parseFilterState(filterStateToParams(state))).toEqual(state);
   });
@@ -69,7 +58,6 @@ describe("filterStateToParams", () => {
       order: "asc",
       type: null,
       q: "",
-      pages: 1,
     });
     expect(params.has("type")).toBe(false);
     expect(params.has("q")).toBe(false);
@@ -84,44 +72,30 @@ describe("useUrlState", () => {
     expect(result.current.state.sortBy).toBe("number");
   });
 
-  it("setFilters updates the given fields and resets pages to 1", () => {
-    const { result } = renderHookWithProviders(() => useUrlState());
-    act(() => {
-      result.current.setPages(4);
-    });
-    expect(result.current.state.pages).toBe(4);
-    act(() => {
-      result.current.setFilters({ type: "Fire" });
-    });
-    expect(result.current.state.type).toBe("Fire");
-    expect(result.current.state.pages).toBe(1);
-  });
-
-  it("setPages only changes pages", () => {
+  it("setFilters updates the given fields without touching the others", () => {
     const { result } = renderHookWithProviders(() => useUrlState());
     act(() => {
       result.current.setFilters({ q: "char" });
     });
     act(() => {
-      result.current.setPages(3);
+      result.current.setFilters({ type: "Fire" });
     });
-    expect(result.current.state.pages).toBe(3);
+    expect(result.current.state.type).toBe("Fire");
     expect(result.current.state.q).toBe("char");
   });
 
-  it("doesn't drop a setFilters call when setPages fires in the same tick", () => {
-    // Regression: the debounced search box (setFilters) and the infinite-scroll
-    // page tracker (setPages) can both fire before either has re-rendered.
-    // Both used to build their patch from the same stale `state` snapshot, so
+  it("doesn't drop a setFilters call when two calls land in the same tick", () => {
+    // Regression: two setFilters callers (e.g. a debounced search box and a
+    // type dropdown) can both fire before either has re-rendered. Both used
+    // to build their patch from the same stale `state` snapshot, so
     // whichever call reached setSearchParams second clobbered the other's
-    // update instead of merging with it — e.g. an in-flight page-restore
-    // firing right after a keystroke would silently erase what was typed.
+    // update instead of merging with it.
     const { result } = renderHookWithProviders(() => useUrlState());
     act(() => {
       result.current.setFilters({ q: "pi" });
-      result.current.setPages(2);
+      result.current.setFilters({ type: "Fire" });
     });
     expect(result.current.state.q).toBe("pi");
-    expect(result.current.state.pages).toBe(2);
+    expect(result.current.state.type).toBe("Fire");
   });
 });
