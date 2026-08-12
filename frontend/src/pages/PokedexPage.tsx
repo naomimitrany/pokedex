@@ -90,11 +90,7 @@ export const PokedexPage = () => {
   );
 
   const handleLoginSubmit = async (username: string) => {
-    try {
-      await loginMutation.login(username);
-    } catch {
-      return;
-    }
+    await loginMutation.login(username);
     setPendingCapture((current) => {
       if (current) {
         // pendingCapture only ever arises from a capture click on an

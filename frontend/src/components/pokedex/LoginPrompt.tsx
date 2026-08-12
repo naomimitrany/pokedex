@@ -26,12 +26,16 @@ export const LoginPrompt = ({
   const trimmed = name.trim();
   const showValidationError = touched && trimmed.length === 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setTouched(true);
     if (trimmed.length === 0) return;
-    onSubmit(trimmed);
-    setName("");
-    setTouched(false);
+    try {
+      await onSubmit(trimmed);
+      setName("");
+      setTouched(false);
+    } catch {
+      // keep the typed name so the user can retry without retyping
+    }
   };
 
   return (
