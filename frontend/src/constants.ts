@@ -3,9 +3,9 @@ import type { SortField } from "./types";
 export const ALLOWED_PAGE_SIZES = [5, 10, 20, 50] as const;
 export const DEFAULT_PAGE_SIZE = 20;
 
-// Restoring N pages on mount costs N sequential ~2s requests (the backend's
-// simulated latency). Cap how far a URL's `pages` value can push that restore
-// so a stale/huge/tampered-with value can't stall the app for minutes.
+// Restoring N pages on mount is a single collapsed request (`to_page`), so
+// this is no longer a latency cap -- it just bounds how many cards a
+// stale/huge/tampered-with `pages` value can force onto the page at once.
 export const MAX_AUTO_RESTORE_PAGES = 15;
 
 export const SORT_FIELDS: { value: SortField; label: string }[] = [

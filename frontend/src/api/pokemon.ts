@@ -2,7 +2,9 @@ import { apiClient } from "./client";
 import { BASE_URL } from "../config";
 import type { PokemonPage, PokemonQuery } from "../types";
 
-export const fetchPokemonPage = async (query: PokemonQuery): Promise<PokemonPage> => {
+export const fetchPokemonPage = async (
+  query: PokemonQuery,
+): Promise<PokemonPage> => {
   const response = await apiClient.get<PokemonPage>("/pokemon", {
     params: {
       page: query.page,
@@ -11,6 +13,7 @@ export const fetchPokemonPage = async (query: PokemonQuery): Promise<PokemonPage
       order: query.order,
       ...(query.type ? { type: query.type } : {}),
       ...(query.q ? { q: query.q } : {}),
+      ...(query.toPage ? { to_page: query.toPage } : {}),
     },
   });
   return response.data;
@@ -21,4 +24,5 @@ export const fetchTypes = async (): Promise<string[]> => {
   return response.data;
 };
 
-export const iconUrl = (name: string): string => `${BASE_URL}/icon/${encodeURIComponent(name)}`;
+export const iconUrl = (name: string): string =>
+  `${BASE_URL}/icon/${encodeURIComponent(name)}`;

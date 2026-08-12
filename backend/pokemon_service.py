@@ -78,16 +78,22 @@ class PokemonService:
         order,
         type_name=None,
         text=None,
+        to_page=None,
     ):
         results = self._filtered_sorted(type_name, text, sort_by, order)
 
         total_count = len(results)
+        total_pages = math.ceil(total_count / page_size)
+        if to_page is not None:
+            reached_page = min(to_page, total_pages) if total_pages else 1
+        else:
+            reached_page = page
         return {
-            "items": self.paginate(results, page, page_size),
-            "page": page,
+            "items": self.paginate(results, page, page_size, to_page),
+            "page": reached_page,
             "page_size": page_size,
             "total_count": total_count,
-            "total_pages": math.ceil(total_count / page_size),
+            "total_pages": total_pages,
         }
 
     @staticmethod
@@ -118,6 +124,7 @@ class PokemonService:
         return sorted(by_name, key=lambda p: p[sort_by], reverse=descending)
 
     @staticmethod
-    def paginate(items, page, page_size):
+    def paginate(items, page, page_size, to_page=None):
         start = (page - 1) * page_size
-        return items[start : start + page_size]
+        end = (to_page if to_page is not None else page) * page_size
+        return items[start:end]

@@ -65,6 +65,50 @@ class TestPagination:
         assert response.get_json()["total_count"] == 6
 
 
+class TestToPageRange:
+    def test_collapses_a_range_of_pages_into_one_response(self, client):
+        body = client.get("/pokemon?page=1&page_size=2&to_page=2").get_json()
+
+        assert names(body) == [
+            "Bulbasaur",
+            "Charmander",
+            "Charizard",
+            "CharizardMega Charizard X",
+        ]
+        assert body["page"] == 2
+        assert body["total_pages"] == 3
+
+    def test_matches_two_separate_single_page_requests(self, client):
+        collapsed = client.get("/pokemon?page=1&page_size=2&to_page=3").get_json()
+        first = client.get("/pokemon?page=1&page_size=2").get_json()
+        second = client.get("/pokemon?page=2&page_size=2").get_json()
+        third = client.get("/pokemon?page=3&page_size=2").get_json()
+
+        assert names(collapsed) == names(first) + names(second) + names(third)
+
+    def test_beyond_the_data_clamps_the_reported_page_to_the_real_last_page(
+        self, client
+    ):
+        body = client.get("/pokemon?page=1&page_size=2&to_page=99").get_json()
+
+        assert names(body) == [
+            "Bulbasaur",
+            "Charmander",
+            "Charizard",
+            "CharizardMega Charizard X",
+            "Squirtle",
+            "Articuno",
+        ]
+        assert body["page"] == 3
+        assert body["total_pages"] == 3
+
+    def test_no_matches_still_reports_page_one(self, client):
+        body = client.get("/pokemon?q=notapokemon&to_page=5").get_json()
+
+        assert body["items"] == []
+        assert body["page"] == 1
+
+
 class TestSorting:
     def test_descending(self, client):
         body = client.get("/pokemon?order=desc").get_json()
@@ -171,6 +215,12 @@ class TestInvalidParameters:
 
         assert response.status_code == 400
         assert response.get_json()["parameter"] == "type"
+
+    def test_to_page_before_page(self, client):
+        response = client.get("/pokemon?page=3&to_page=2")
+
+        assert response.status_code == 400
+        assert response.get_json()["parameter"] == "to_page"
 
     def test_blank_values_fall_back_to_defaults(self, client):
         response = client.get("/pokemon?page=&page_size=&sort_by=&order=&type=&q=")

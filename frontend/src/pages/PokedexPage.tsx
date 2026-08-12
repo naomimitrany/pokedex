@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
+import Grid from "@mui/material/Grid";
 import Snackbar from "@mui/material/Snackbar";
 import { FilterBar } from "../components/pokedex/FilterBar";
 import { LoginPrompt } from "../components/pokedex/LoginPrompt";
+import { PokemonCardSkeleton } from "../components/pokedex/PokemonCardSkeleton";
 import { PokemonGrid } from "../components/pokedex/PokemonGrid";
 import { useCaptureMutation } from "../hooks/useCaptureMutation";
 import { useIdentity } from "../hooks/useIdentity";
 import { useLoginMutation } from "../hooks/useLoginMutation";
 import { usePokemonList } from "../hooks/usePokemonList";
-import { useScrollRestoration } from "../hooks/useScrollRestoration";
+import {
+  getSavedPages,
+  useScrollRestoration,
+} from "../hooks/useScrollRestoration";
 import { useTypes } from "../hooks/useTypes";
 import { useUrlState } from "../hooks/useUrlState";
 import type { Pokemon } from "../types";
@@ -23,6 +27,31 @@ export const PokedexPage = () => {
   const captureMutation = useCaptureMutation();
   const loginMutation = useLoginMutation();
 
+  const scrollKey = useMemo(
+    () =>
+      `pokedex:scroll:${filters.pageSize}:${filters.sortBy}:${filters.order}:${filters.type ?? ""}:${filters.q}`,
+    [filters.pageSize, filters.sortBy, filters.order, filters.type, filters.q],
+  );
+
+  // The URL's `pages` is written asynchronously once a fetch resolves, so it
+  // can lag behind what was actually on screen when the scroll position was
+  // last saved (see useScrollRestoration's getSavedPages). Restoring to
+  // whichever is larger guarantees enough content loads to reach the saved
+  // offset instead of clamping short of it.
+  const restoreToPage = useMemo(
+    () => Math.max(filters.pages, getSavedPages(scrollKey)),
+    [filters.pages, scrollKey],
+  );
+
+  const [loadedPages, setLoadedPages] = useState(restoreToPage);
+  const handlePagesChange = useCallback(
+    (pages: number) => {
+      setLoadedPages(pages);
+      setPages(pages);
+    },
+    [setPages],
+  );
+
   const list = usePokemonList({
     filters: {
       pageSize: filters.pageSize,
@@ -31,8 +60,8 @@ export const PokedexPage = () => {
       type: filters.type,
       q: filters.q,
     },
-    restoreToPage: filters.pages,
-    onPagesChange: setPages,
+    restoreToPage,
+    onPagesChange: handlePagesChange,
   });
 
   useEffect(() => {
@@ -48,15 +77,14 @@ export const PokedexPage = () => {
     if (!isKnownType) setFilters({ type: null });
   }, [filters.type, types, setFilters]);
 
-  const scrollKey = useMemo(
-    () =>
-      `pokedex:scroll:${filters.pageSize}:${filters.sortBy}:${filters.order}:${filters.type ?? ""}:${filters.q}`,
-    [filters.pageSize, filters.sortBy, filters.order, filters.type, filters.q],
-  );
-
   const scrollRestored = useScrollRestoration(
     scrollKey,
-    !list.isLoading && !list.isRestoring,
+    // A failed fetch also clears isLoading/isRestoring, but there's nothing
+    // to scroll to yet -- gate on `!error` too so a failed restore doesn't
+    // consume the one-shot restore against an empty error view, leaving a
+    // later successful retry with no saved position left to apply.
+    !list.isLoading && !list.isRestoring && !list.error,
+    loadedPages,
   );
 
   const [pendingCapture, setPendingCapture] = useState<Pokemon | null>(null);
@@ -114,23 +142,24 @@ export const PokedexPage = () => {
       >
         <FilterBar types={types} filters={filters} onChange={setFilters} />
         {list.isRestoring && !scrollRestored ? (
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress />
-          </Box>
+          <Grid container spacing={2}>
+            {Array.from({ length: filters.pageSize }, (_, i) => (
+              <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                <PokemonCardSkeleton />
+              </Grid>
+            ))}
+          </Grid>
         ) : (
           <Box
             sx={{
               flex: 1,
               display: "flex",
               flexDirection: "column",
-              visibility: scrollRestored ? "visible" : "hidden",
+              // An error has no saved position to jump to, so it's exempt
+              // from the "stay hidden until scroll is restored" gate --
+              // otherwise the error message (and its Retry button) would be
+              // invisible for as long as `ready` withholds the restore.
+              visibility: scrollRestored || list.error ? "visible" : "hidden",
             }}
           >
             <PokemonGrid
@@ -145,6 +174,7 @@ export const PokedexPage = () => {
               onRetry={list.retry}
               onToggleCapture={handleToggleCapture}
               pageSize={filters.pageSize}
+              restoringScroll={!scrollRestored}
             />
           </Box>
         )}

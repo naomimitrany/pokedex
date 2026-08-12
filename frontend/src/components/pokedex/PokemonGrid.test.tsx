@@ -27,9 +27,12 @@ type IOCallback = (
 ) => void;
 let ioCallback: IOCallback | null = null;
 
+let ioOptions: IntersectionObserverInit | undefined;
+
 class IntersectionObserverMock {
-  constructor(callback: IOCallback) {
+  constructor(callback: IOCallback, options?: IntersectionObserverInit) {
     ioCallback = callback;
+    ioOptions = options;
   }
   observe = vi.fn();
   unobserve = vi.fn();
@@ -115,6 +118,13 @@ describe("PokemonGrid", () => {
     expect(ioCallback).not.toBeNull();
     ioCallback?.([{ isIntersecting: true }]);
     expect(onLoadMore).toHaveBeenCalled();
+  });
+
+  it("observes the sentinel with a positive rootMargin so the next page starts loading before it's reached", () => {
+    render(
+      <PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore onLoadMore={vi.fn()} />,
+    );
+    expect(ioOptions?.rootMargin).toBe("800px");
   });
 
   it("shows an end-of-list message and no sentinel when hasMore is false", () => {

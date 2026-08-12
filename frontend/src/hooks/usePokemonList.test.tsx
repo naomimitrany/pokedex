@@ -38,6 +38,29 @@ function page(pageNum: number, totalCount: number, pageSize = 2): PokemonPage {
   };
 }
 
+// Mirrors the backend's `to_page` collapsing: one response spanning
+// pages `pageNum..toPage`, with `page` clamped to the real last page.
+function pageRange(
+  pageNum: number,
+  toPage: number,
+  totalCount: number,
+  pageSize = 2,
+): PokemonPage {
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const start = (pageNum - 1) * pageSize;
+  const end = Math.min(toPage * pageSize, totalCount);
+  const items = Array.from({ length: Math.max(0, end - start) }, (_, i) =>
+    pokemon(start + i + 1),
+  );
+  return {
+    items,
+    page: totalPages ? Math.min(toPage, totalPages) : 1,
+    page_size: pageSize,
+    total_count: totalCount,
+    total_pages: totalPages,
+  };
+}
+
 const baseFilters: PokemonListFilters = {
   pageSize: 2,
   sortBy: "number",
@@ -54,7 +77,11 @@ describe("usePokemonList", () => {
   it("loads page 1 on mount", async () => {
     vi.spyOn(pokemonApi, "fetchPokemonPage").mockResolvedValue(page(1, 6));
     const { result } = renderHookWithProviders(() =>
-      usePokemonList({ filters: baseFilters, restoreToPage: 1, onPagesChange: vi.fn() }),
+      usePokemonList({
+        filters: baseFilters,
+        restoreToPage: 1,
+        onPagesChange: vi.fn(),
+      }),
     );
     expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -83,73 +110,93 @@ describe("usePokemonList", () => {
       Promise.resolve(page(q.page, 2)),
     );
     const { result } = renderHookWithProviders(() =>
-      usePokemonList({ filters: baseFilters, restoreToPage: 1, onPagesChange: vi.fn() }),
+      usePokemonList({
+        filters: baseFilters,
+        restoreToPage: 1,
+        onPagesChange: vi.fn(),
+      }),
     );
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.hasMore).toBe(false);
   });
 
-  it("restores multiple pages on mount when restoreToPage > 1", async () => {
-    vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation((q) =>
-      Promise.resolve(page(q.page, 6)),
-    );
+  it("collapses a multi-page restore into a single request", async () => {
+    const spy = vi
+      .spyOn(pokemonApi, "fetchPokemonPage")
+      .mockImplementation((q) =>
+        Promise.resolve(
+          q.toPage ? pageRange(q.page, q.toPage, 6) : page(q.page, 6),
+        ),
+      );
     const onPagesChange = vi.fn();
     const { result } = renderHookWithProviders(() =>
-      usePokemonList({ filters: baseFilters, restoreToPage: 2, onPagesChange }),
+      usePokemonList({ filters: baseFilters, restoreToPage: 3, onPagesChange }),
     );
-    await waitFor(() => expect(result.current.items).toHaveLength(4));
-    expect(onPagesChange).toHaveBeenCalledWith(2);
+    await waitFor(() => expect(result.current.items).toHaveLength(6));
+    expect(onPagesChange).toHaveBeenCalledWith(3);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, toPage: 3 }),
+    );
   });
 
-  it("reports isRestoring while catching up to restoreToPage, then clears it", async () => {
-    let resolvePage2!: (value: PokemonPage) => void;
-    vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation((q) => {
-      if (q.page === 2) return new Promise((resolve) => (resolvePage2 = resolve));
-      return Promise.resolve(page(q.page, 6));
-    });
-    const { result } = renderHookWithProviders(() =>
-      usePokemonList({ filters: baseFilters, restoreToPage: 3, onPagesChange: vi.fn() }),
+  it("reports isRestoring while the collapsed restore fetch is in flight, then clears it", async () => {
+    let resolveFetch!: (value: PokemonPage) => void;
+    vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation(
+      () => new Promise((resolve) => (resolveFetch = resolve)),
     );
-    await waitFor(() => expect(result.current.items).toHaveLength(2));
-    expect(result.current.isRestoring).toBe(true);
+    const { result } = renderHookWithProviders(() =>
+      usePokemonList({
+        filters: baseFilters,
+        restoreToPage: 3,
+        onPagesChange: vi.fn(),
+      }),
+    );
+    await waitFor(() => expect(result.current.isRestoring).toBe(true));
+    expect(result.current.items).toEqual([]);
 
-    resolvePage2(page(2, 6));
-    await waitFor(() => expect(result.current.items).toHaveLength(6), { timeout: 3000 });
+    resolveFetch(pageRange(1, 3, 6));
+    await waitFor(() => expect(result.current.items).toHaveLength(6));
     expect(result.current.isRestoring).toBe(false);
   });
 
-  it("stops retrying and surfaces an error if a restore page fetch fails, instead of looping forever", async () => {
-    let page2Calls = 0;
-    vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation((q) => {
-      if (q.page === 2) {
-        page2Calls += 1;
-        return Promise.reject(new Error("network down"));
-      }
-      return Promise.resolve(page(q.page, 6));
-    });
+  it("does not report isRestoring when restoreToPage is 1", async () => {
+    vi.spyOn(pokemonApi, "fetchPokemonPage").mockResolvedValue(page(1, 6));
+    const { result } = renderHookWithProviders(() =>
+      usePokemonList({
+        filters: baseFilters,
+        restoreToPage: 1,
+        onPagesChange: vi.fn(),
+      }),
+    );
+    expect(result.current.isRestoring).toBe(false);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isRestoring).toBe(false);
+  });
+
+  it("surfaces an error if the restore fetch fails, and retry recovers without partial state", async () => {
     const onPagesChange = vi.fn();
+    vi.spyOn(pokemonApi, "fetchPokemonPage").mockRejectedValueOnce(
+      new Error("network down"),
+    );
     const { result } = renderHookWithProviders(() =>
       usePokemonList({ filters: baseFilters, restoreToPage: 3, onPagesChange }),
     );
 
     await waitFor(() => expect(result.current.error).toBe("network down"));
+    expect(result.current.items).toEqual([]);
     expect(result.current.isRestoring).toBe(false);
-    // Not reported as "done restoring at page 1" — the target (3) is left
-    // alone so a later successful retry can resume toward it.
     expect(onPagesChange).not.toHaveBeenCalled();
 
-    // Give the effect a chance to run again; a fixed hook settles instead of
-    // re-firing fetchNextPage on every render.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(page2Calls).toBe(1);
-
-    // A successful retry should resume the restore toward the original target.
     vi.spyOn(pokemonApi, "fetchPokemonPage").mockImplementation((q) =>
-      Promise.resolve(page(q.page, 6)),
+      Promise.resolve(
+        q.toPage ? pageRange(q.page, q.toPage, 6) : page(q.page, 6),
+      ),
     );
     result.current.retry();
     await waitFor(() => expect(result.current.items).toHaveLength(6));
     expect(result.current.error).toBeNull();
+    expect(onPagesChange).toHaveBeenCalledWith(3);
   });
 
   it("resets to page 1 when filters change", async () => {
@@ -168,7 +215,9 @@ describe("usePokemonList", () => {
     rerender({ filters: { ...baseFilters, type: "Fire" } });
     await waitFor(() => expect(result.current.items).toHaveLength(2));
     expect(result.current.items.map((p) => p.number)).toEqual([1, 2]);
-    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, type: "Fire" }));
+    expect(spy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, type: "Fire" }),
+    );
   });
 
   it("sets an error message when the fetch rejects, and retry recovers", async () => {
@@ -176,7 +225,11 @@ describe("usePokemonList", () => {
       .mockRejectedValueOnce(new Error("network down"))
       .mockResolvedValueOnce(page(1, 2));
     const { result } = renderHookWithProviders(() =>
-      usePokemonList({ filters: baseFilters, restoreToPage: 1, onPagesChange: vi.fn() }),
+      usePokemonList({
+        filters: baseFilters,
+        restoreToPage: 1,
+        onPagesChange: vi.fn(),
+      }),
     );
     await waitFor(() => expect(result.current.error).toBe("network down"));
     expect(result.current.items).toEqual([]);

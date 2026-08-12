@@ -90,7 +90,14 @@ export const useUrlState = () => {
 
   const setPages = useCallback(
     (pages: number) => {
-      const next: FilterState = { ...latestRef.current, pages };
+      // Clamped the same way parsePages clamps on read -- otherwise a restore
+      // driven by a larger sessionStorage page count (see getSavedPages) writes
+      // an over-cap value here, and the canonicalization effect above
+      // immediately rewrites it back down, flashing the URL between the two.
+      const next: FilterState = {
+        ...latestRef.current,
+        pages: Math.min(pages, MAX_AUTO_RESTORE_PAGES),
+      };
       latestRef.current = next;
       setSearchParams(filterStateToParams(next), { replace: true });
     },

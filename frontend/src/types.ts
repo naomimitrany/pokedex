@@ -48,4 +48,5 @@ export type PokemonQuery = {
   order: SortOrder;
   type?: string | null;
   q?: string;
+  toPage?: number;
 };

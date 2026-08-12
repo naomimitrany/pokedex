@@ -104,6 +104,7 @@ def list_pokemon():
             order=args.order,
             type_name=args.type_name,
             text=args.q,
+            to_page=args.to_page,
         )
     )
 
@@ -115,7 +116,9 @@ def list_types():
 
 @app.get("/icon/<name>")
 def get_icon(name):
-    return redirect(ICON_URL.format(number=_require_pokemon(name)["number"]), code=302)
+    response = redirect(ICON_URL.format(number=_require_pokemon(name)["number"]), code=302)
+    response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    return response
 
 
 @app.post("/login")

@@ -8,6 +8,16 @@ import { PokemonCard } from "./PokemonCard";
 import { PokemonCardSkeleton } from "./PokemonCardSkeleton";
 import type { Pokemon } from "../../types";
 
+const getScrollParent = (el: HTMLElement): HTMLElement | null => {
+  let node = el.parentElement;
+  while (node) {
+    const { overflowY } = getComputedStyle(node);
+    if (overflowY === "auto" || overflowY === "scroll") return node;
+    node = node.parentElement;
+  }
+  return null;
+};
+
 export const PokemonGrid = ({
   items,
   capturedNames,
@@ -20,6 +30,7 @@ export const PokemonGrid = ({
   onRetry,
   onToggleCapture,
   pageSize,
+  restoringScroll,
 }: {
   items: Pokemon[];
   capturedNames: Set<string>;
@@ -32,6 +43,7 @@ export const PokemonGrid = ({
   onRetry: () => void;
   onToggleCapture: (pokemon: Pokemon, captured: boolean) => void;
   pageSize: number;
+  restoringScroll?: boolean;
 }) => {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -39,9 +51,16 @@ export const PokemonGrid = ({
     if (isLoading || isFetchingNextPage || error || !hasMore) return;
     const node = sentinelRef.current;
     if (!node) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
-    });
+    // rootMargin only expands the *root's* bounds, and the root defaults to the
+    // window viewport — but the grid scrolls inside `main` (overflowY: auto), which
+    // clips the sentinel before it ever reaches the window edge. Rooting the
+    // observer at that scroll container is what lets the margin have any effect.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { root: getScrollParent(node), rootMargin: "800px" },
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, [isLoading, isFetchingNextPage, error, hasMore, onLoadMore]);
@@ -95,10 +114,24 @@ export const PokemonGrid = ({
           <Grid
             key={pokemon.name}
             size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
-            sx={{
-              contentVisibility: "auto",
-              containIntrinsicSize: "420px",
-            }}
+            // Skipped while a saved scroll offset is being restored. A restore fetch
+            // inserts every card for the target pages in one commit, and content-visibility
+            // only settles which off-screen cards get skip-sized down to containIntrinsicSize
+            // on a later paint -- with the old per-page walk that settling had already
+            // happened (each page got its own paint, seconds apart, before the final jump).
+            // Landing scrollTo() in that same pre-settle window means whichever cards land
+            // above the target get (de)promoted right as/after the jump, nudging the
+            // container's scrollHeight by however far their real height was from the
+            // estimate. Rendering at full size for that one restore pass costs an extra
+            // layout, but guarantees the jump lands where it was saved.
+            sx={
+              restoringScroll
+                ? undefined
+                : {
+                    contentVisibility: "auto",
+                    containIntrinsicSize: "420px",
+                  }
+            }
           >
             <PokemonCard
               pokemon={pokemon}

@@ -26,6 +26,7 @@ class PokemonQueryArgs(BaseModel):
     page_size: int = Field(
         default=PokemonService.DEFAULT_PAGE_SIZE, ge=1, le=PokemonService.MAX_PAGE_SIZE
     )
+    to_page: Optional[int] = Field(default=None, ge=1)
     sort_by: SortField = "number"
     order: Literal["asc", "desc"] = "asc"
     type_name: Optional[str] = Field(default=None, alias="type")
@@ -39,6 +40,16 @@ class PokemonQueryArgs(BaseModel):
         allowed = (info.context or {}).get("allowed_types", ())
         if value.lower() not in {t.lower() for t in allowed}:
             raise ValueError(f"must be one of {sorted(allowed)}, got {value!r}")
+        return value
+
+    @field_validator("to_page")
+    @classmethod
+    def _to_page_not_before_page(cls, value, info):
+        if value is None:
+            return None
+        page = info.data.get("page", 1)
+        if value < page:
+            raise ValueError(f"must be >= page ({page})")
         return value
 
 
