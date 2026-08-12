@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchPokemonPage } from "../api/pokemon";
+import { getErrorMessage } from "../api/client";
 import type { Pokemon, SortField, SortOrder } from "../types";
 
 export type PokemonListFilters = {
@@ -27,9 +28,6 @@ export type UsePokemonListResult = {
   loadMore: () => void;
   retry: () => void;
 };
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Something went wrong";
 
 export const usePokemonList = ({
   filters,
@@ -104,7 +102,7 @@ export const usePokemonList = ({
     isLoading: query.isPending,
     isFetchingNextPage: query.isFetchingNextPage,
     isRestoring: loadedPages > 0 && loadedPages < targetRef.current && !isFetchNextPageError,
-    error: query.isError ? errorMessage(query.error) : null,
+    error: query.isError ? getErrorMessage(query.error) : null,
     hasMore: query.hasNextPage ?? false,
     loadMore,
     retry,
