@@ -885,6 +885,7 @@ Create `frontend/src/pages/CapturedPage.tsx`:
 ```tsx
 import { useCallback, useEffect, useRef } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -893,13 +894,22 @@ import { CapturedDeck } from "../components/pokedex/CapturedDeck";
 import { EmptyState } from "../components/general/EmptyState";
 import { ErrorState } from "../components/general/ErrorState";
 import { PokemonCardSkeleton } from "../components/pokedex/PokemonCardSkeleton";
+import { fetchMe } from "../api/accounts";
 import { useCaptureMutation } from "../hooks/useCaptureMutation";
 import { useCapturedPokemon } from "../hooks/useCapturedPokemon";
-import { useIdentity } from "../hooks/useIdentity";
+import { useIdentity, ME_QUERY_KEY } from "../hooks/useIdentity";
 import type { Pokemon } from "../types";
 
 export const CapturedPage = () => {
   const identity = useIdentity();
+  // useIdentity() collapses "still loading" and "confirmed logged out" into
+  // the same { username: null } shape, which isn't enough to gate the
+  // redirect below: firing <Navigate> while /me is still in flight would
+  // replace the URL (wiping ?card=) before we actually know the user is
+  // logged in. Reading the same ["me"] query directly (single-flight with
+  // useIdentity's own subscription, no extra request) lets us tell "unknown
+  // yet" apart from "logged out" and hold off the redirect until it settles.
+  const identityQuery = useQuery({ queryKey: ME_QUERY_KEY, queryFn: fetchMe });
   const captured = useCapturedPokemon();
   const captureMutation = useCaptureMutation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -939,6 +949,7 @@ export const CapturedPage = () => {
   const handleNavigate = (direction: -1 | 1) => goTo(centerIndex + direction);
   const handleRelease = (pokemon: Pokemon) => captureMutation.mutate({ pokemon, captured: true });
 
+  if (identityQuery.isLoading) return null;
   if (!identity.username) return <Navigate to="/" replace />;
 
   return (
