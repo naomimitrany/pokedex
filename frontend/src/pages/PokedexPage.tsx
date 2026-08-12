@@ -73,6 +73,7 @@ export const PokedexPage = () => {
     // later successful retry with no saved position left to apply.
     !list.isLoading && !list.isRestoring && !list.error,
     list.loadedPages,
+    filters.pageSize,
   );
 
   // How many cards from the initial restore fetch should stay exempt from

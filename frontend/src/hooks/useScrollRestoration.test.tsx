@@ -33,7 +33,7 @@ describe("useScrollRestoration", () => {
 
     const { result, rerender } = renderHook(
       ({ ready }: { ready: boolean }) =>
-        useScrollRestoration("pokedex:scroll:test", ready, 1),
+        useScrollRestoration("pokedex:scroll:test", ready, 1, 1),
       { initialProps: { ready: false } },
     );
     expect(result.current).toBe(false);
@@ -45,7 +45,7 @@ describe("useScrollRestoration", () => {
 
   it("does not wait to restore when nothing was saved for this key", () => {
     const { result } = renderHook(() =>
-      useScrollRestoration("pokedex:scroll:unused", true, 1),
+      useScrollRestoration("pokedex:scroll:unused", true, 1, 1),
     );
     expect(result.current).toBe(true);
   });
@@ -55,7 +55,7 @@ describe("useScrollRestoration", () => {
     seed("pokedex:scroll:b", 500, 1);
 
     const { result, rerender } = renderHook(
-      ({ key }: { key: string }) => useScrollRestoration(key, true, 1),
+      ({ key }: { key: string }) => useScrollRestoration(key, true, 1, 1),
       { initialProps: { key: "pokedex:scroll:a" } },
     );
     expect(result.current).toBe(true); // nothing to restore for "a"
@@ -76,7 +76,7 @@ describe("useScrollRestoration", () => {
 
       keys.forEach((key) => {
         const { unmount } = renderHook(() =>
-          useScrollRestoration(key, true, 1),
+          useScrollRestoration(key, true, 1, 1),
         );
         main.dispatchEvent(new Event("scroll"));
         vi.advanceTimersByTime(150);
@@ -100,7 +100,9 @@ describe("useScrollRestoration", () => {
   it("saves scrollTop and the loaded-pages count together, readable via getSavedScrollEntry", () => {
     vi.useFakeTimers();
     try {
-      renderHook(() => useScrollRestoration("pokedex:scroll:test", true, 7));
+      renderHook(() =>
+        useScrollRestoration("pokedex:scroll:test", true, 7, 1),
+      );
       main.scrollTop = 900;
       main.dispatchEvent(new Event("scroll"));
       vi.advanceTimersByTime(150);
@@ -138,7 +140,7 @@ describe("useScrollRestoration", () => {
 
       keys.forEach((key) => {
         const { unmount } = renderHook(() =>
-          useScrollRestoration(key, true, 3),
+          useScrollRestoration(key, true, 3, 1),
         );
         main.dispatchEvent(new Event("scroll"));
         vi.advanceTimersByTime(150);
@@ -169,7 +171,7 @@ describe("useScrollRestoration", () => {
 
     try {
       const { result } = renderHook(() =>
-        useScrollRestoration("pokedex:scroll:test", true, 1),
+        useScrollRestoration("pokedex:scroll:test", true, 1, 1),
       );
       expect(result.current).toBe(true);
       expect(main.scrollTo).toHaveBeenCalledWith({ top: 500 });
@@ -205,5 +207,46 @@ describe("useScrollRestoration", () => {
       sessionStorage.getItem("pokedex:scroll:index") ?? "[]",
     );
     expect(index).toEqual(["pokedex:scroll:other"]);
+  });
+
+  it("saves the page derived from the topmost visible card, not the total fetched-page count", () => {
+    vi.useFakeTimers();
+    try {
+      // Simulates having fetched 5 pages (pageSize 20, so 100 cards) but
+      // scrolled back up so only page-1 content is still in view: cards
+      // 0-19 have not been scrolled past (bottom stays below the
+      // container's top), cards 20+ have (bottom above it).
+      main.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+      for (let i = 0; i < 100; i++) {
+        const card = document.createElement("div");
+        card.setAttribute("data-pokemon-index", String(i));
+        card.getBoundingClientRect = () =>
+          ({ bottom: i < 20 ? 50 : -50 }) as DOMRect;
+        main.appendChild(card);
+      }
+
+      renderHook(() => useScrollRestoration("pokedex:scroll:test", true, 5, 20));
+      main.dispatchEvent(new Event("scroll"));
+      vi.advanceTimersByTime(150);
+
+      expect(getSavedScrollEntry("pokedex:scroll:test")?.pages).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to the total fetched-page count when no card position data is present", () => {
+    vi.useFakeTimers();
+    try {
+      // No cards in the DOM at all (e.g. an edge case with an empty list) --
+      // findVisiblePage has nothing to find a position from.
+      renderHook(() => useScrollRestoration("pokedex:scroll:test", true, 4, 20));
+      main.dispatchEvent(new Event("scroll"));
+      vi.advanceTimersByTime(150);
+
+      expect(getSavedScrollEntry("pokedex:scroll:test")?.pages).toBe(4);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

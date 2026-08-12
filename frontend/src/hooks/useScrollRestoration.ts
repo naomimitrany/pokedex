@@ -55,6 +55,28 @@ const isAlreadyRestored = (scrollKey: string) => {
   return !entry || entry.scrollTop <= 0;
 };
 
+// Finds the page that whichever card is topmost-but-still-visible belongs
+// to. `card.bottom <= containerTop` means the card has been scrolled fully
+// past (0 visible pixels) -- the first card that fails that test, in DOM
+// order (which matches item order), is where the current scroll position
+// actually is. This is what makes "scroll to page 5, then back up to page
+// 1, then refresh" only need to re-fetch page 1 -- the total-fetched-pages
+// count (which only ever grows) would say 5 instead.
+const findVisiblePage = (
+  container: HTMLElement,
+  pageSize: number,
+): number | null => {
+  const containerTop = container.getBoundingClientRect().top;
+  const cards = container.querySelectorAll("[data-pokemon-index]");
+  for (const card of cards) {
+    if (card.getBoundingClientRect().bottom > containerTop) {
+      const index = Number(card.getAttribute("data-pokemon-index"));
+      return Math.floor(index / pageSize) + 1;
+    }
+  }
+  return null;
+};
+
 // The single read path for a saved scroll position: the pixel offset and
 // how many pages were on screen when it was saved, written together so they
 // can never disagree with each other (the old design tracked page count in
@@ -88,6 +110,7 @@ export const useScrollRestoration = (
   scrollKey: string,
   ready: boolean,
   loadedPages: number,
+  pageSize: number,
 ): boolean => {
   // Read by the scroll listener's debounced handler without making it a
   // dependency of the effect below (which would tear down and rebuild the
@@ -104,9 +127,10 @@ export const useScrollRestoration = (
     const handleScroll = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
+        const visiblePage = findVisiblePage(main, pageSize);
         writeEntry(scrollKey, {
           scrollTop: main.scrollTop,
-          pages: loadedPagesRef.current,
+          pages: visiblePage ?? loadedPagesRef.current,
         });
         touchScrollKey(scrollKey);
       }, 150);
@@ -116,7 +140,7 @@ export const useScrollRestoration = (
       clearTimeout(timeout);
       main.removeEventListener("scroll", handleScroll);
     };
-  }, [scrollKey]);
+  }, [scrollKey, pageSize]);
 
   // Kept false until the saved scroll offset (if any) is applied, so a
   // restore never renders at the top before jumping down.

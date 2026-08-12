@@ -113,6 +113,7 @@ export const PokemonGrid = ({
         {items.map((pokemon, index) => (
           <Grid
             key={pokemon.name}
+            data-pokemon-index={index}
             size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
             // The first `restoredCount` cards were part of the initial
             // collapsed restore fetch (see PokedexPage's `restoredCount`
