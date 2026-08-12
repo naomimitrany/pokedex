@@ -15,7 +15,6 @@ export type PokemonListFilters = {
 export type UsePokemonListArgs = {
   filters: PokemonListFilters;
   restoreToPage: number;
-  onPagesChange: (pages: number) => void;
 };
 
 export type UsePokemonListResult = {
@@ -23,6 +22,7 @@ export type UsePokemonListResult = {
   isLoading: boolean;
   isFetchingNextPage: boolean;
   isRestoring: boolean;
+  loadedPages: number;
   error: string | null;
   hasMore: boolean;
   loadMore: () => void;
@@ -32,22 +32,18 @@ export type UsePokemonListResult = {
 export const usePokemonList = ({
   filters,
   restoreToPage,
-  onPagesChange,
 }: UsePokemonListArgs): UsePokemonListResult => {
   const filtersKey = JSON.stringify(filters);
-  // Frozen per query (reset only when `filtersKey` changes), so our own
-  // onPagesChange calls below don't feed back into how far we "should" restore.
-  // Only consulted by the very first (pageParam 1) fetch of a query, which
-  // asks the backend for pages 1..restoreToPage in a single request instead
-  // of walking fetchNextPage restoreToPage times.
+  // Frozen per query (reset only when `filtersKey` changes) so it reflects
+  // whatever was true when this query started rather than whatever
+  // `restoreToPage` happens to evaluate to on some later, unrelated
+  // re-render. Only consulted by the very first (pageParam 1) fetch of a
+  // query, which asks the backend for pages 1..restoreToPage in a single
+  // request instead of walking fetchNextPage restoreToPage times.
   const targetRef = useRef(restoreToPage);
-  const reportedRef = useRef(false);
 
   useEffect(() => {
     targetRef.current = restoreToPage;
-    reportedRef.current = false;
-    // Deliberately scoped to filtersKey only: restoreToPage grows because of
-    // our own onPagesChange calls and must not re-arm the restore target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
 
@@ -72,15 +68,6 @@ export const usePokemonList = ({
   const loadedPages = query.data?.pages.at(-1)?.page ?? 0;
   const { isFetchingNextPage, fetchNextPage, refetch } = query;
 
-  useEffect(() => {
-    if (loadedPages === 0) return;
-    if (!reportedRef.current || loadedPages !== targetRef.current) {
-      reportedRef.current = true;
-      targetRef.current = loadedPages;
-      onPagesChange(loadedPages);
-    }
-  }, [loadedPages, onPagesChange]);
-
   const items = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],
     [query.data],
@@ -101,6 +88,7 @@ export const usePokemonList = ({
     // isPending only holds during a query's very first fetch, which is
     // exactly the (now single) restore request when targeting page > 1.
     isRestoring: query.isPending && targetRef.current > 1,
+    loadedPages,
     error: query.isError ? getErrorMessage(query.error) : null,
     hasMore: query.hasNextPage ?? false,
     loadMore,
