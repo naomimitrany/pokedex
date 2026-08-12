@@ -62,6 +62,8 @@ export const PokemonSprite = memo(
               component="img"
               src={iconUrl(name)}
               alt={name}
+              loading="lazy"
+              decoding="async"
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageErrored(true)}
               sx={{

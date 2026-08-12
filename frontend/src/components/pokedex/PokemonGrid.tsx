@@ -92,7 +92,14 @@ export const PokemonGrid = ({
     <Box>
       <Grid container spacing={2}>
         {items.map((pokemon) => (
-          <Grid key={pokemon.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+          <Grid
+            key={pokemon.name}
+            size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+            sx={{
+              contentVisibility: "auto",
+              containIntrinsicSize: "420px",
+            }}
+          >
             <PokemonCard
               pokemon={pokemon}
               captured={capturedNames.has(pokemon.name)}
