@@ -14,6 +14,7 @@ class PokemonService:
         self._lock = threading.Lock()
         self._snapshot_cache = TTLCache(maxsize=1, ttl=ttl_seconds)
         self._condition = threading.Condition(self._lock)
+        self._version = 0
 
         self._query_lock = threading.Lock()
         self._query_cache = TTLCache(maxsize=self.QUERY_CACHE_SIZE, ttl=ttl_seconds)
@@ -27,17 +28,22 @@ class PokemonService:
         """The one place `db.get()` is called.
 
         Computes the raw list alongside everything derived from a full pass
-        over it -- a name lookup dict and the sorted type list -- so those
-        derivations happen once per snapshot instead of once per request.
+        over it -- a name lookup dict, the sorted type list, and a version
+        number -- so those derivations happen once per snapshot instead of
+        once per request. The version lets `_filtered_sorted` detect a
+        refreshed snapshot without keying on `id()`, which CPython can reuse
+        across allocations once the old snapshot dict is freed.
         """
         pokemon = db.get()
         types = {p.get("type_one", "") for p in pokemon} | {
             p.get("type_two", "") for p in pokemon
         }
+        self._version += 1
         return {
             "pokemon": pokemon,
             "by_name": {p["name"].lower(): p for p in pokemon},
             "types": sorted(types - {""}),
+            "version": self._version,
         }
 
     def get_pokemon(self):
@@ -52,7 +58,7 @@ class PokemonService:
     @cachedmethod(
         lambda self: self._query_cache,
         key=lambda self, type_name, text, sort_by, order: keys.hashkey(
-            id(self._snapshot()), type_name, text, sort_by, order
+            self._snapshot()["version"], type_name, text, sort_by, order
         ),
         lock=lambda self: self._query_lock,
     )
