@@ -157,5 +157,11 @@ def release_pokemon(name):
     return jsonify({"name": pokemon["name"], "captured": False})
 
 
+@app.get("/captures")
+def list_captures():
+    username = _require_username()
+    return jsonify(pokemon_service.pokemon_for_names(accounts.captured_names(username)))
+
+
 if __name__ == "__main__":
     app.run(port=8080)

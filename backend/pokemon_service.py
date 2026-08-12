@@ -52,6 +52,13 @@ class PokemonService:
     def find_by_name(self, name):
         return self._snapshot()["by_name"].get(name.lower())
 
+    def pokemon_for_names(self, names):
+        wanted = {n.lower() for n in names}
+        matches = [
+            p for p in self._snapshot()["pokemon"] if p["name"].lower() in wanted
+        ]
+        return self.sort_pokemon(matches, "number", descending=False)
+
     def available_types(self):
         return self._snapshot()["types"]
 
