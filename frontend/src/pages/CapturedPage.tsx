@@ -26,7 +26,14 @@ export const CapturedPage = () => {
   // logged in. Reading the same ["me"] query directly (single-flight with
   // useIdentity's own subscription, no extra request) lets us tell "unknown
   // yet" apart from "logged out" and hold off the redirect until it settles.
-  const identityQuery = useQuery({ queryKey: ME_QUERY_KEY, queryFn: fetchMe });
+  // staleTime here must match useIdentity's own (Infinity) -- it's the same
+  // cache entry, and without it this second observer would refetch on every
+  // mount regardless of that hook's own setting.
+  const identityQuery = useQuery({
+    queryKey: ME_QUERY_KEY,
+    queryFn: fetchMe,
+    staleTime: Infinity,
+  });
   const captured = useCapturedPokemon();
   const captureMutation = useCaptureMutation();
   const [searchParams, setSearchParams] = useSearchParams();

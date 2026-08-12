@@ -3,6 +3,7 @@ import axios from "axios";
 import { useLocation } from "react-router-dom";
 import { getErrorMessage } from "../api/client";
 import { fetchPokemonDetail } from "../api/pokemon";
+import { POKEMON_CACHE_STALE_TIME_MS } from "../config";
 import type { Pokemon } from "../types";
 
 export const usePokemonDetail = (name: string) => {
@@ -23,9 +24,8 @@ export const usePokemonDetail = (name: string) => {
     // Without a staleTime, initialData (the record we already have from the
     // list, passed via router state) is treated as stale the instant it's
     // set, so refetchOnMount fires anyway -- defeating the point of passing
-    // it. Matches the list query's staleTime (usePokemonList.ts), which is
-    // itself bounded by the backend's snapshot cache TTL.
-    staleTime: 500_000,
+    // it.
+    staleTime: POKEMON_CACHE_STALE_TIME_MS,
   });
 
   const notFound =
