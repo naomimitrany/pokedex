@@ -55,26 +55,30 @@ const isAlreadyRestored = (scrollKey: string) => {
   return !entry || entry.scrollTop <= 0;
 };
 
-// Finds the page that whichever card is topmost-but-still-visible belongs
-// to. `card.bottom <= containerTop` means the card has been scrolled fully
-// past (0 visible pixels) -- the first card that fails that test, in DOM
-// order (which matches item order), is where the current scroll position
-// actually is. This is what makes "scroll to page 5, then back up to page
-// 1, then refresh" only need to re-fetch page 1 -- the total-fetched-pages
-// count (which only ever grows) would say 5 instead.
+// Finds the page needed to cover everything visible in the viewport --
+// specifically the *bottom* of it, not just the top. Restoring only needs
+// enough content for scrollHeight to reach `scrollTop + clientHeight`; using
+// the topmost visible card instead (an earlier version of this function)
+// under-counts whenever the viewport straddles a page boundary, since some
+// visible content below the top card can belong to the next page. Cards are
+// in DOM order (== item order), and within a CSS grid row they share the
+// same top/bottom, so the moment one card's top reaches the viewport's
+// bottom edge, no later card (same or deeper row) can still be above it --
+// safe to stop scanning right there.
 const findVisiblePage = (
   container: HTMLElement,
   pageSize: number,
 ): number | null => {
-  const containerTop = container.getBoundingClientRect().top;
+  const containerBottom = container.getBoundingClientRect().bottom;
   const cards = container.querySelectorAll("[data-pokemon-index]");
+  let lastVisibleIndex: number | null = null;
   for (const card of cards) {
-    if (card.getBoundingClientRect().bottom > containerTop) {
-      const index = Number(card.getAttribute("data-pokemon-index"));
-      return Math.floor(index / pageSize) + 1;
-    }
+    if (card.getBoundingClientRect().top >= containerBottom) break;
+    lastVisibleIndex = Number(card.getAttribute("data-pokemon-index"));
   }
-  return null;
+  return lastVisibleIndex === null
+    ? null
+    : Math.floor(lastVisibleIndex / pageSize) + 1;
 };
 
 // The single read path for a saved scroll position: the pixel offset and

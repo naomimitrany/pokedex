@@ -209,19 +209,19 @@ describe("useScrollRestoration", () => {
     expect(index).toEqual(["pokedex:scroll:other"]);
   });
 
-  it("saves the page derived from the topmost visible card, not the total fetched-page count", () => {
+  it("saves the page derived from the bottom of the visible viewport, not the total fetched-page count", () => {
     vi.useFakeTimers();
     try {
       // Simulates having fetched 5 pages (pageSize 20, so 100 cards) but
-      // scrolled back up so only page-1 content is still in view: cards
-      // 0-19 have not been scrolled past (bottom stays below the
-      // container's top), cards 20+ have (bottom above it).
-      main.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+      // scrolled back up so the whole viewport (up to its bottom edge,
+      // 600px) only shows page-1 content: cards 0-19 sit above that edge,
+      // cards 20+ sit at or below it.
+      main.getBoundingClientRect = () => ({ bottom: 600 }) as DOMRect;
       for (let i = 0; i < 100; i++) {
         const card = document.createElement("div");
         card.setAttribute("data-pokemon-index", String(i));
         card.getBoundingClientRect = () =>
-          ({ bottom: i < 20 ? 50 : -50 }) as DOMRect;
+          ({ top: i < 20 ? 500 : 650 }) as DOMRect;
         main.appendChild(card);
       }
 
@@ -230,6 +230,33 @@ describe("useScrollRestoration", () => {
       vi.advanceTimersByTime(150);
 
       expect(getSavedScrollEntry("pokedex:scroll:test")?.pages).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("saves the next page when the viewport's bottom edge already shows content from it, so restoring fetches enough to reach the full viewport", () => {
+    vi.useFakeTimers();
+    try {
+      // The viewport (bottom edge at 600px) shows page-1 cards at its top
+      // (indices 0-19, all above 600px) AND the first couple of page-2
+      // cards near its bottom edge (indices 20-21, still above 600px).
+      // Restoring must fetch page 2 too, or scrollHeight falls short of
+      // what's needed to reach this exact scrollTop again.
+      main.getBoundingClientRect = () => ({ bottom: 600 }) as DOMRect;
+      for (let i = 0; i < 100; i++) {
+        const card = document.createElement("div");
+        card.setAttribute("data-pokemon-index", String(i));
+        card.getBoundingClientRect = () =>
+          ({ top: i < 22 ? 500 : 650 }) as DOMRect;
+        main.appendChild(card);
+      }
+
+      renderHook(() => useScrollRestoration("pokedex:scroll:test", true, 5, 20));
+      main.dispatchEvent(new Event("scroll"));
+      vi.advanceTimersByTime(150);
+
+      expect(getSavedScrollEntry("pokedex:scroll:test")?.pages).toBe(2);
     } finally {
       vi.useRealTimers();
     }
