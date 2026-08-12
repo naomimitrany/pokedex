@@ -5,6 +5,7 @@ import { BagFab } from "./components/pokedex/BagFab";
 import { NavBar } from "./components/navbar/NavBar";
 import { CapturedPage } from "./pages/CapturedPage";
 import { PokedexPage } from "./pages/PokedexPage";
+import { PokemonDetailPage } from "./pages/PokemonDetailPage";
 
 const App = () => (
   <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -34,6 +35,7 @@ const App = () => (
     >
       <Routes>
         <Route path="/" element={<PokedexPage />} />
+        <Route path="/pokemon/:name" element={<PokemonDetailPage />} />
         <Route path="/captured" element={<CapturedPage />} />
       </Routes>
     </Box>

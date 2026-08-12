@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Snackbar from "@mui/material/Snackbar";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { BackButton } from "../components/general/BackButton";
 import { CapturedDeck } from "../components/pokedex/CapturedDeck";
 import { EmptyState } from "../components/general/EmptyState";
 import { ErrorState } from "../components/general/ErrorState";
@@ -84,11 +83,7 @@ export const CapturedPage = () => {
 
   return (
     <>
-      <Box sx={{ px: 2, pt: 2 }}>
-        <Button component={Link} to="/" startIcon={<ArrowBackIcon />}>
-          Back
-        </Button>
-      </Box>
+      <BackButton to="/" />
       <Container maxWidth="md" sx={{ py: 3 }}>
         {captured.isLoading ? (
           <Grid container spacing={2} sx={{ justifyContent: "center" }}>

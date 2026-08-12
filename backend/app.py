@@ -109,6 +109,11 @@ def list_pokemon():
     )
 
 
+@app.get("/pokemon/<name>")
+def get_pokemon(name):
+    return jsonify(_require_pokemon(name))
+
+
 @app.get("/types")
 def list_types():
     return jsonify(pokemon_service.available_types())

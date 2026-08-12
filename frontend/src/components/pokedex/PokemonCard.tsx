@@ -5,6 +5,7 @@ import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { Link } from "react-router-dom";
 import { CaptureButton } from "./CaptureButton";
 import { PokemonSprite } from "./PokemonSprite";
 import { PokemonStats } from "./PokemonStats";
@@ -36,11 +37,17 @@ export const PokemonCard = memo(
 
     return (
       <Box
+        component={Link}
+        to={`/pokemon/${encodeURIComponent(pokemon.name)}`}
+        state={{ pokemon }}
         sx={{
           position: "relative",
           height: "100%",
           borderRadius: "20px",
           overflow: "hidden",
+          display: "block",
+          textDecoration: "none",
+          color: "inherit",
           transition: "transform 0.2s ease, box-shadow 0.2s ease",
           "&:hover": {
             transform: "translateY(-3px)",

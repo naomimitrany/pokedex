@@ -7,40 +7,52 @@ import { iconUrl } from "../../api/pokemon";
 import emptyPokeball from "../../assets/empty-pokeball.png";
 
 export const PokemonSprite = memo(
-  ({ name, glow }: { name: string; glow: string }) => {
+  ({
+    name,
+    glow,
+    size = 140,
+    background = "background.default",
+  }: {
+    name: string;
+    glow: string;
+    size?: number;
+    background?: string;
+  }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageErrored, setImageErrored] = useState(false);
+    const imgSize = Math.round(size * 0.77);
 
     return (
       <Box
         sx={{
           position: "relative",
-          height: 140,
+          height: size,
+          width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           background: `radial-gradient(circle at 50% 38%, ${alpha(glow, 0.3)} 0%, transparent 68%)`,
-          bgcolor: "background.default",
+          bgcolor: background,
         }}
       >
         {imageLoaded && (
           <Box
             sx={{
               position: "absolute",
-              bottom: 16,
+              bottom: Math.round(size * 0.11),
               width: "46%",
-              height: 8,
+              height: Math.max(6, Math.round(size * 0.057)),
               borderRadius: "50%",
               bgcolor: "rgba(120,120,120,0.35)",
             }}
           />
         )}
-        <Box sx={{ position: "relative", height: 108, width: 108 }}>
+        <Box sx={{ position: "relative", height: imgSize, width: imgSize }}>
           {!imageLoaded && !imageErrored && (
             <Skeleton
               variant="circular"
-              width={108}
-              height={108}
+              width={imgSize}
+              height={imgSize}
               sx={{ position: "absolute", inset: 0 }}
             />
           )}
@@ -51,8 +63,8 @@ export const PokemonSprite = memo(
               alt=""
               sx={{
                 position: "relative",
-                height: 108,
-                width: 108,
+                height: imgSize,
+                width: imgSize,
                 objectFit: "contain",
                 opacity: 0.45,
               }}
@@ -68,9 +80,9 @@ export const PokemonSprite = memo(
               onError={() => setImageErrored(true)}
               sx={{
                 position: "relative",
-                height: 108,
+                height: imgSize,
                 width: "auto",
-                maxWidth: 108,
+                maxWidth: imgSize,
                 mx: "auto",
                 objectFit: "contain",
                 filter: "drop-shadow(0 6px 6px rgba(0,0,0,0.25))",

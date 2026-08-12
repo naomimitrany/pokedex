@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
@@ -8,9 +8,7 @@ import { FilterBar } from "../components/pokedex/FilterBar";
 import { LoginPrompt } from "../components/pokedex/LoginPrompt";
 import { PokemonCardSkeleton } from "../components/pokedex/PokemonCardSkeleton";
 import { PokemonGrid } from "../components/pokedex/PokemonGrid";
-import { useCaptureMutation } from "../hooks/useCaptureMutation";
-import { useIdentity } from "../hooks/useIdentity";
-import { useLoginMutation } from "../hooks/useLoginMutation";
+import { useCaptureFlow } from "../hooks/useCaptureFlow";
 import { usePokemonList } from "../hooks/usePokemonList";
 import {
   getSavedScrollEntry,
@@ -18,15 +16,12 @@ import {
 } from "../hooks/useScrollRestoration";
 import { useTypes } from "../hooks/useTypes";
 import { useUrlState } from "../hooks/useUrlState";
-import type { Pokemon } from "../types";
 import { buildScrollKey } from "../utils/scrollKey";
 
 export const PokedexPage = () => {
   const { state: filters, setFilters } = useUrlState();
   const types = useTypes();
-  const identity = useIdentity();
-  const captureMutation = useCaptureMutation();
-  const loginMutation = useLoginMutation();
+  const captureFlow = useCaptureFlow();
 
   const scrollKey = useMemo(
     () => buildScrollKey(filters),
@@ -83,48 +78,6 @@ export const PokedexPage = () => {
   const restoredCount =
     restoreToPage > 1 ? restoreToPage * filters.pageSize : 0;
 
-  const [pendingCapture, setPendingCapture] = useState<Pokemon | null>(null);
-  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (captureMutation.isError) {
-      setSnackbarMessage("Couldn't update capture. Try again.");
-    }
-  }, [captureMutation.isError]);
-
-  const capturedNames = useMemo(
-    () => new Set(identity.captured),
-    [identity.captured],
-  );
-
-  const capturingName = captureMutation.isPending
-    ? captureMutation.variables?.pokemon.name
-    : undefined;
-
-  const captureMutate = captureMutation.mutate;
-  const handleToggleCapture = useCallback(
-    (pokemon: Pokemon, captured: boolean) => {
-      if (!identity.username) {
-        setPendingCapture(pokemon);
-        return;
-      }
-      captureMutate({ pokemon, captured });
-    },
-    [identity.username, captureMutate],
-  );
-
-  const handleLoginSubmit = async (username: string) => {
-    await loginMutation.login(username);
-    setPendingCapture((current) => {
-      if (current) {
-        // pendingCapture only ever arises from a capture click on an
-        // anonymous (therefore always-uncaptured) card.
-        captureMutation.mutate({ pokemon: current, captured: false });
-      }
-      return null;
-    });
-  };
-
   return (
     <>
       <Container
@@ -160,15 +113,15 @@ export const PokedexPage = () => {
           >
             <PokemonGrid
               items={list.items}
-              capturedNames={capturedNames}
-              capturingName={capturingName}
+              capturedNames={captureFlow.capturedNames}
+              capturingName={captureFlow.capturingName}
               isLoading={list.isLoading}
               isFetchingNextPage={list.isFetchingNextPage}
               error={list.error}
               hasMore={list.hasMore}
               onLoadMore={list.loadMore}
               onRetry={list.retry}
-              onToggleCapture={handleToggleCapture}
+              onToggleCapture={captureFlow.handleToggleCapture}
               pageSize={filters.pageSize}
               restoredCount={restoredCount}
             />
@@ -176,18 +129,18 @@ export const PokedexPage = () => {
         )}
       </Container>
       <LoginPrompt
-        open={pendingCapture !== null}
-        onClose={() => setPendingCapture(null)}
-        onSubmit={handleLoginSubmit}
-        error={loginMutation.error}
+        open={captureFlow.pendingCapture !== null}
+        onClose={captureFlow.closePendingCapture}
+        onSubmit={captureFlow.handleLoginSubmit}
+        error={captureFlow.loginError}
       />
       <Snackbar
-        open={snackbarMessage !== null}
+        open={captureFlow.snackbarMessage !== null}
         autoHideDuration={4000}
-        onClose={() => setSnackbarMessage(null)}
+        onClose={captureFlow.dismissSnackbar}
       >
-        <Alert severity="error" onClose={() => setSnackbarMessage(null)}>
-          {snackbarMessage}
+        <Alert severity="error" onClose={captureFlow.dismissSnackbar}>
+          {captureFlow.snackbarMessage}
         </Alert>
       </Snackbar>
     </>

@@ -25,19 +25,26 @@ const StatBar = memo(
     value,
     color,
     max,
+    size = "sm",
   }: {
     label: string;
     value: number;
     color: string;
     max: number;
+    size?: "sm" | "lg";
   }) => {
     const pct = Math.min(100, (value / max) * 100);
+    const isLg = size === "lg";
     return (
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Stack
+        direction="row"
+        spacing={isLg ? 1.5 : 1}
+        sx={{ alignItems: "center" }}
+      >
         <Typography
-          variant="caption"
+          variant={isLg ? "body2" : "caption"}
           sx={{
-            width: 30,
+            width: isLg ? 44 : 30,
             flexShrink: 0,
             fontWeight: 700,
             color: "text.secondary",
@@ -48,7 +55,7 @@ const StatBar = memo(
         <Box
           sx={{
             flexGrow: 1,
-            height: 7,
+            height: isLg ? 12 : 7,
             borderRadius: 4,
             bgcolor: alpha(color, 0.18),
             overflow: "hidden",
@@ -65,9 +72,9 @@ const StatBar = memo(
           />
         </Box>
         <Typography
-          variant="caption"
+          variant={isLg ? "body2" : "caption"}
           sx={{
-            width: 26,
+            width: isLg ? 34 : 26,
             flexShrink: 0,
             textAlign: "right",
             fontVariantNumeric: "tabular-nums",
@@ -81,16 +88,25 @@ const StatBar = memo(
   },
 );
 
-export const PokemonStats = memo(({ pokemon }: { pokemon: Pokemon }) => (
-  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-    {STATS.map(({ key, label, color, max }) => (
-      <StatBar
-        key={label}
-        label={label}
-        value={pokemon[key] as number}
-        color={color}
-        max={max}
-      />
-    ))}
-  </Stack>
-));
+export const PokemonStats = memo(
+  ({
+    pokemon,
+    size = "sm",
+  }: {
+    pokemon: Pokemon;
+    size?: "sm" | "lg";
+  }) => (
+    <Stack spacing={size === "lg" ? 1.5 : 0.5} sx={{ mt: 0.5 }}>
+      {STATS.map(({ key, label, color, max }) => (
+        <StatBar
+          key={label}
+          label={label}
+          value={pokemon[key] as number}
+          color={color}
+          max={max}
+          size={size}
+        />
+      ))}
+    </Stack>
+  ),
+);

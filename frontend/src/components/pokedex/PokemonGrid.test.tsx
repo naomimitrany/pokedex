@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PokemonGrid } from "./PokemonGrid";
+import { renderWithProviders } from "../../test/renderWithProviders";
 import type { Pokemon } from "../../types";
 
 function pokemon(number: number): Pokemon {
@@ -63,14 +64,16 @@ describe("PokemonGrid", () => {
   });
 
   it("shows pageSize skeleton cards while loading initially", () => {
-    render(<PokemonGrid {...baseProps} items={[]} isLoading pageSize={4} />);
+    renderWithProviders(
+      <PokemonGrid {...baseProps} items={[]} isLoading pageSize={4} />,
+    );
     expect(screen.getAllByTestId("pokemon-card-skeleton")).toHaveLength(4);
   });
 
   it("shows an error alert with retry when the initial load fails", async () => {
     const onRetry = vi.fn();
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PokemonGrid
         {...baseProps}
         items={[]}
@@ -84,7 +87,7 @@ describe("PokemonGrid", () => {
   });
 
   it("shows an empty state when there is no error and no items", () => {
-    render(<PokemonGrid {...baseProps} items={[]} />);
+    renderWithProviders(<PokemonGrid {...baseProps} items={[]} />);
     expect(screen.getByText(/nothing here/i)).toBeInTheDocument();
   });
 
@@ -92,7 +95,7 @@ describe("PokemonGrid", () => {
     const onToggleCapture = vi.fn();
     const user = userEvent.setup();
     const mon1 = pokemon(1);
-    render(
+    renderWithProviders(
       <PokemonGrid
         {...baseProps}
         items={[mon1, pokemon(2)]}
@@ -107,7 +110,7 @@ describe("PokemonGrid", () => {
 
   it("triggers onLoadMore when the sentinel intersects and hasMore is true", () => {
     const onLoadMore = vi.fn();
-    render(
+    renderWithProviders(
       <PokemonGrid
         {...baseProps}
         items={[pokemon(1)]}
@@ -121,19 +124,26 @@ describe("PokemonGrid", () => {
   });
 
   it("observes the sentinel with a positive rootMargin so the next page starts loading before it's reached", () => {
-    render(
-      <PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore onLoadMore={vi.fn()} />,
+    renderWithProviders(
+      <PokemonGrid
+        {...baseProps}
+        items={[pokemon(1)]}
+        hasMore
+        onLoadMore={vi.fn()}
+      />,
     );
     expect(ioOptions?.rootMargin).toBe("800px");
   });
 
   it("shows an end-of-list message and no sentinel when hasMore is false", () => {
-    render(<PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore={false} />);
+    renderWithProviders(
+      <PokemonGrid {...baseProps} items={[pokemon(1)]} hasMore={false} />,
+    );
     expect(screen.getByText(/gotta catch 'em all/i)).toBeInTheDocument();
   });
 
   it("shows trailing skeletons while fetching the next page", () => {
-    render(
+    renderWithProviders(
       <PokemonGrid
         {...baseProps}
         items={[pokemon(1)]}
@@ -145,14 +155,18 @@ describe("PokemonGrid", () => {
   });
 
   it("only disables the capture button for the card matching capturingName", () => {
-    render(
+    renderWithProviders(
       <PokemonGrid
         {...baseProps}
         items={[pokemon(1), pokemon(2)]}
         capturingName="Mon1"
       />,
     );
-    expect(screen.getByRole("button", { name: /capture mon1/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /capture mon2/i })).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /capture mon1/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /capture mon2/i }),
+    ).not.toBeDisabled();
   });
 });

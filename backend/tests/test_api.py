@@ -245,6 +245,37 @@ class TestTypes:
         assert "" not in client.get("/types").get_json()
 
 
+class TestPokemonDetail:
+    def test_returns_the_full_record(self, client):
+        response = client.get("/pokemon/Bulbasaur")
+
+        assert response.status_code == 200
+        assert response.get_json() == {
+            "number": 1,
+            "name": "Bulbasaur",
+            "type_one": "Grass",
+            "type_two": "Poison",
+            "total": 318,
+            "hit_points": 50,
+            "attack": 50,
+            "defense": 50,
+            "special_attack": 50,
+            "special_defense": 50,
+            "speed": 50,
+            "generation": 1,
+            "legendary": False,
+        }
+
+    def test_is_case_insensitive(self, client):
+        assert client.get("/pokemon/bulbasaur").status_code == 200
+
+    def test_unknown_name_is_a_404(self, client):
+        response = client.get("/pokemon/Missingno")
+
+        assert response.status_code == 404
+        assert "error" in response.get_json()
+
+
 class TestIcon:
     def test_redirects_to_the_artwork_for_that_number(self, client):
         response = client.get("/icon/Charizard")
