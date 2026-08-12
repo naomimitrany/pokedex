@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "C:\\Projects\\pokedex\\frontend"],
       "port": 5173
+    },
+    {
+      "name": "pokedex-backend",
+      "runtimeExecutable": "C:\\Projects\\pokedex\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["C:\\Projects\\pokedex\\backend\\app.py"],
+      "port": 8080
     }
   ]
 }
