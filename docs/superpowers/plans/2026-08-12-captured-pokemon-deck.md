@@ -248,8 +248,8 @@ export const useCapturedPokemon = () => {
   });
 
   return {
-    data: query.data as Pokemon[] | undefined,
-    isLoading: query.isPending,
+    data: query.data,
+    isLoading: query.isLoading,
     error: query.isError ? getErrorMessage(query.error) : null,
     retry: () => {
       void query.refetch();
@@ -257,6 +257,8 @@ export const useCapturedPokemon = () => {
   };
 };
 ```
+
+`query.isLoading` (not `query.isPending`) is deliberate: `isPending` stays `true` forever for a disabled query (logged-out users, since `enabled: !!identity.username`) even though nothing is fetching, while `isLoading` is TanStack's own fetch-status-aware flag (`isPending && isFetching`) and correctly reads `false` when disabled.
 
 - [ ] **Step 5: Run the test to verify it passes**
 
