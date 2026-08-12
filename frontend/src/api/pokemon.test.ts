@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "./client";
-import { fetchPokemonPage, fetchTypes, iconUrl } from "./pokemon";
+import {
+  fetchPokemonDetail,
+  fetchPokemonPage,
+  fetchTypes,
+  iconUrl,
+} from "./pokemon";
 
 describe("api/pokemon", () => {
   afterEach(() => {
@@ -95,6 +100,28 @@ describe("api/pokemon", () => {
   it("fetchTypes returns the parsed list", async () => {
     vi.spyOn(apiClient, "get").mockResolvedValue({ data: ["Fire", "Water"] });
     await expect(fetchTypes()).resolves.toEqual(["Fire", "Water"]);
+  });
+
+  it("fetchPokemonDetail requests the encoded name", async () => {
+    const pokemon = {
+      number: 1,
+      name: "Bulbasaur",
+      type_one: "Grass",
+      type_two: "Poison",
+      total: 318,
+      hit_points: 45,
+      attack: 49,
+      defense: 49,
+      special_attack: 65,
+      special_defense: 65,
+      speed: 45,
+      generation: 1,
+      legendary: false,
+    };
+    const spy = vi.spyOn(apiClient, "get").mockResolvedValue({ data: pokemon });
+
+    await expect(fetchPokemonDetail("Mr. Mime")).resolves.toEqual(pokemon);
+    expect(spy).toHaveBeenCalledWith("/pokemon/Mr.%20Mime");
   });
 
   it("iconUrl points at the backend icon endpoint", () => {

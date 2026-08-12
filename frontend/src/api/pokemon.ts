@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import { BASE_URL } from "../config";
-import type { PokemonPage, PokemonQuery } from "../types";
+import type { Pokemon, PokemonPage, PokemonQuery } from "../types";
 
 export const fetchPokemonPage = async (
   query: PokemonQuery,
@@ -21,6 +21,13 @@ export const fetchPokemonPage = async (
 
 export const fetchTypes = async (): Promise<string[]> => {
   const response = await apiClient.get<string[]>("/types");
+  return response.data;
+};
+
+export const fetchPokemonDetail = async (name: string): Promise<Pokemon> => {
+  const response = await apiClient.get<Pokemon>(
+    `/pokemon/${encodeURIComponent(name)}`,
+  );
   return response.data;
 };
 
