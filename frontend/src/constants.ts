@@ -4,8 +4,9 @@ export const ALLOWED_PAGE_SIZES = [5, 10, 20, 50] as const;
 export const DEFAULT_PAGE_SIZE = 20;
 
 // Restoring N pages on mount is a single collapsed request (`to_page`), so
-// this is no longer a latency cap -- it just bounds how many cards a
-// stale/huge/tampered-with `pages` value can force onto the page at once.
+// this isn't a latency cap -- it bounds how many cards a stale/huge/
+// tampered-with saved sessionStorage entry can force onto the page at once
+// (see getSavedScrollEntry in useScrollRestoration.ts).
 export const MAX_AUTO_RESTORE_PAGES = 15;
 
 export const SORT_FIELDS: { value: SortField; label: string }[] = [

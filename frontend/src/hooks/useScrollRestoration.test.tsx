@@ -1,6 +1,10 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getSavedPages, useScrollRestoration } from "./useScrollRestoration";
+import { MAX_AUTO_RESTORE_PAGES } from "../constants";
+import {
+  getSavedScrollEntry,
+  useScrollRestoration,
+} from "./useScrollRestoration";
 
 describe("useScrollRestoration", () => {
   let main: HTMLElement;
@@ -19,8 +23,12 @@ describe("useScrollRestoration", () => {
     document.body.removeChild(main);
   });
 
+  const seed = (key: string, scrollTop: number, pages: number) => {
+    sessionStorage.setItem(key, JSON.stringify({ scrollTop, pages }));
+  };
+
   it("restores a previously saved scroll position once ready", () => {
-    sessionStorage.setItem("pokedex:scroll:test", "240");
+    seed("pokedex:scroll:test", 240, 1);
 
     const { result, rerender } = renderHook(
       ({ ready }: { ready: boolean }) =>
@@ -42,8 +50,8 @@ describe("useScrollRestoration", () => {
   });
 
   it("restores the saved position for a new key switched to after the first key was already restored", () => {
-    sessionStorage.setItem("pokedex:scroll:a", "0");
-    sessionStorage.setItem("pokedex:scroll:b", "500");
+    seed("pokedex:scroll:a", 0, 1);
+    seed("pokedex:scroll:b", 500, 1);
 
     const { result, rerender } = renderHook(
       ({ key }: { key: string }) => useScrollRestoration(key, true, 1),
@@ -88,24 +96,38 @@ describe("useScrollRestoration", () => {
     }
   });
 
-  it("saves the loaded-pages count alongside scrollTop, readable via getSavedPages", () => {
+  it("saves scrollTop and the loaded-pages count together, readable via getSavedScrollEntry", () => {
     vi.useFakeTimers();
     try {
       renderHook(() => useScrollRestoration("pokedex:scroll:test", true, 7));
+      main.scrollTop = 900;
       main.dispatchEvent(new Event("scroll"));
       vi.advanceTimersByTime(150);
 
-      expect(getSavedPages("pokedex:scroll:test")).toBe(7);
+      expect(getSavedScrollEntry("pokedex:scroll:test")).toEqual({
+        scrollTop: 900,
+        pages: 7,
+      });
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("getSavedPages defaults to 1 when nothing was saved for the key", () => {
-    expect(getSavedPages("pokedex:scroll:never-visited")).toBe(1);
+  it("getSavedScrollEntry returns null when nothing was saved for the key", () => {
+    expect(getSavedScrollEntry("pokedex:scroll:never-visited")).toBeNull();
   });
 
-  it("evicting a scroll key also removes its saved pages count", () => {
+  it("clamps an excessively large saved pages value to MAX_AUTO_RESTORE_PAGES", () => {
+    // A stale/tampered sessionStorage entry shouldn't be able to force a
+    // 500-page collapsed restore fetch.
+    seed("pokedex:scroll:huge", 100, 500);
+    expect(getSavedScrollEntry("pokedex:scroll:huge")).toEqual({
+      scrollTop: 100,
+      pages: MAX_AUTO_RESTORE_PAGES,
+    });
+  });
+
+  it("evicting a scroll key removes its whole saved entry", () => {
     vi.useFakeTimers();
     try {
       const keys = Array.from(
@@ -122,8 +144,11 @@ describe("useScrollRestoration", () => {
         unmount();
       });
 
-      expect(getSavedPages(keys[0])).toBe(1); // evicted -> back to default
-      expect(getSavedPages(keys[20])).toBe(3);
+      expect(getSavedScrollEntry(keys[0])).toBeNull(); // evicted
+      expect(getSavedScrollEntry(keys[20])).toEqual({
+        scrollTop: 0,
+        pages: 3,
+      });
     } finally {
       vi.useRealTimers();
     }

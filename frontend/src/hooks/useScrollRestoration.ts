@@ -1,8 +1,31 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MAX_AUTO_RESTORE_PAGES } from "../constants";
 import { getScrollContainer } from "../utils/scrollContainer";
 
 const INDEX_KEY = "pokedex:scroll:index";
 const MAX_TRACKED_KEYS = 20;
+
+type ScrollEntry = { scrollTop: number; pages: number };
+
+const readEntry = (scrollKey: string): ScrollEntry | null => {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(scrollKey) ?? "null");
+    if (
+      !parsed ||
+      typeof parsed.scrollTop !== "number" ||
+      typeof parsed.pages !== "number"
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeEntry = (scrollKey: string, entry: ScrollEntry) => {
+  sessionStorage.setItem(scrollKey, JSON.stringify(entry));
+};
 
 const readIndex = (): string[] => {
   try {
@@ -22,29 +45,34 @@ const touchScrollKey = (key: string) => {
   index.push(key);
   while (index.length > MAX_TRACKED_KEYS) {
     const evicted = index.shift();
-    if (evicted) {
-      sessionStorage.removeItem(evicted);
-      sessionStorage.removeItem(pagesKey(evicted));
-    }
+    if (evicted) sessionStorage.removeItem(evicted);
   }
   sessionStorage.setItem(INDEX_KEY, JSON.stringify(index));
 };
 
-const isAlreadyRestored = (scrollKey: string) =>
-  Number(sessionStorage.getItem(scrollKey)) <= 0;
+const isAlreadyRestored = (scrollKey: string) => {
+  const entry = readEntry(scrollKey);
+  return !entry || entry.scrollTop <= 0;
+};
 
-const pagesKey = (scrollKey: string) => `${scrollKey}:pages`;
-
-// How many pages were loaded the last time this key's scroll position was
-// saved. The URL's own `pages` value can lag behind this -- it's written
-// asynchronously once a fetch resolves, while the scroll listener below
-// captures scrollTop the moment the user stops scrolling, which can be
-// before that write lands. Restoring against only the URL's count can then
-// under-load content and clamp the restored scroll short of the real
-// position. Callers should restore to at least `Math.max(urlPages, this)`.
-export const getSavedPages = (scrollKey: string): number => {
-  const raw = Number(sessionStorage.getItem(pagesKey(scrollKey)));
-  return Number.isInteger(raw) && raw > 0 ? raw : 1;
+// The single read path for a saved scroll position: the pixel offset and
+// how many pages were on screen when it was saved, written together so they
+// can never disagree with each other (the old design tracked page count in
+// a second place -- the URL -- and the two could drift). `pages` is clamped
+// here, at read time, so a stale/tampered entry from a previous session
+// can't force an oversized collapsed restore fetch.
+export const getSavedScrollEntry = (
+  scrollKey: string,
+): ScrollEntry | null => {
+  const entry = readEntry(scrollKey);
+  if (!entry) return null;
+  return {
+    scrollTop: entry.scrollTop,
+    pages: Math.min(
+      Math.max(Math.trunc(entry.pages), 1),
+      MAX_AUTO_RESTORE_PAGES,
+    ),
+  };
 };
 
 export const useScrollRestoration = (
@@ -67,11 +95,10 @@ export const useScrollRestoration = (
     const handleScroll = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        sessionStorage.setItem(scrollKey, String(main.scrollTop));
-        sessionStorage.setItem(
-          pagesKey(scrollKey),
-          String(loadedPagesRef.current),
-        );
+        writeEntry(scrollKey, {
+          scrollTop: main.scrollTop,
+          pages: loadedPagesRef.current,
+        });
         touchScrollKey(scrollKey);
       }, 150);
     };
@@ -99,60 +126,18 @@ export const useScrollRestoration = (
     setScrollRestored(isAlreadyRestored(scrollKey));
   }
 
-  // Set by the jump effect below, read by the settle effect that follows it --
-  // a ref (not state) because writing it must not itself trigger a re-render.
-  const savedScrollTopRef = useRef(0);
-
+  // One jump, before paint, once the restore-target content has rendered.
+  // Cards that were part of that initial render stay exempt from
+  // content-visibility for the life of this mount (see PokemonGrid's
+  // `restoredCount` prop) specifically so this scrollTo can't get knocked
+  // off target by a later content-visibility re-estimate -- no re-snap
+  // loop needed here as a result.
   useLayoutEffect(() => {
     if (scrollRestored || !ready) return;
-    const savedScrollTop = Number(sessionStorage.getItem(scrollKey));
-    savedScrollTopRef.current = savedScrollTop;
-    getScrollContainer()?.scrollTo({ top: savedScrollTop });
+    const entry = readEntry(scrollKey);
+    getScrollContainer()?.scrollTo({ top: entry?.scrollTop ?? 0 });
     setScrollRestored(true);
   }, [scrollRestored, ready, scrollKey]);
-
-  // A restore fetch inserts every card for the target pages in one commit, and
-  // things like content-visibility's skip-sizing of off-screen cards settle
-  // asynchronously on a later paint rather than synchronously with that
-  // insert -- so the jump above can still get nudged out of place for a few
-  // frames afterward. Re-snap to the saved offset until layout stops moving,
-  // backing off the moment the user actually touches the scroll themselves.
-  // A separate effect (rather than folding this into the one above) so that
-  // setScrollRestored(true) firing doesn't tear this loop down before its
-  // first frame runs -- this one only depends on the state that effect sets.
-  useEffect(() => {
-    if (!scrollRestored) return;
-    const savedScrollTop = savedScrollTopRef.current;
-    if (savedScrollTop <= 0) return;
-    const container = getScrollContainer();
-    if (!container) return;
-
-    let cancelled = false;
-    const cancel = () => {
-      cancelled = true;
-    };
-    container.addEventListener("wheel", cancel, { once: true, passive: true });
-    container.addEventListener("touchstart", cancel, {
-      once: true,
-      passive: true,
-    });
-
-    const deadline = performance.now() + 300;
-    let raf = requestAnimationFrame(function reassert() {
-      if (cancelled) return;
-      if (container.scrollTop !== savedScrollTop) {
-        container.scrollTo({ top: savedScrollTop });
-      }
-      if (performance.now() < deadline) raf = requestAnimationFrame(reassert);
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-      container.removeEventListener("wheel", cancel);
-      container.removeEventListener("touchstart", cancel);
-    };
-  }, [scrollRestored]);
 
   return scrollRestored;
 };
