@@ -1,62 +1,29 @@
 import { useMemo } from "react";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { PokemonCard } from "./PokemonCard";
-import { iconUrl } from "../../api/pokemon";
 import type { Pokemon } from "../../types";
 
-// Fan step per distance-from-center, capped at 3 neighbors each side --
-// beyond that a card would be almost entirely transparent/off to the side
-// anyway. Index 0 here is unused (the center card has its own styling
-// below); indices 1-3 describe the 1st/2nd/3rd peeking neighbor.
+// One fan step per distance from center (index 0 = the centered card
+// itself). Every card in the deck -- center and peeks alike -- renders
+// the same PokemonCard, keyed by name and positioned purely via
+// transform/opacity, so stepping the deck slides an existing DOM node
+// from one fan slot to the next (a real CSS transition) instead of
+// unmounting a small "peek" element and mounting a differently-shaped
+// "center" element in its place, which can't animate between them.
 const FAN_STEPS = [
-  { rotate: 0, dy: -20, scale: 1.06, opacity: 1 },
-  { rotate: 9, dy: 4, scale: 0.92, opacity: 0.8 },
-  { rotate: 18, dy: 14, scale: 0.8, opacity: 0.55 },
-  { rotate: 28, dy: 30, scale: 0.68, opacity: 0.35 },
+  { dx: 0, dy: -20, rotate: 0, scale: 1.06, opacity: 1 },
+  { dx: 170, dy: 6, rotate: 9, scale: 0.6, opacity: 0.95 },
+  { dx: 230, dy: 18, rotate: 18, scale: 0.48, opacity: 0.85 },
+  { dx: 280, dy: 34, rotate: 27, scale: 0.38, opacity: 0.72 },
 ];
-const FAN_SPACING = 73;
 const MAX_PEEK = FAN_STEPS.length - 1;
-
-const PeekCard = ({ pokemon, offset }: { pokemon: Pokemon; offset: number }) => {
-  const magnitude = Math.min(Math.abs(offset), MAX_PEEK);
-  const step = FAN_STEPS[magnitude];
-  const sign = Math.sign(offset);
-  return (
-    <Card
-      sx={{
-        position: "absolute",
-        left: "50%",
-        top: 20,
-        width: 150,
-        height: 210,
-        borderRadius: "17px",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 0.5,
-        transition: "transform 0.2s ease, opacity 0.2s ease",
-        transform: `translateX(calc(-50% + ${sign * magnitude * FAN_SPACING}px)) translateY(${step.dy}px) rotate(${sign * step.rotate}deg) scale(${step.scale})`,
-        opacity: step.opacity,
-        zIndex: 10 - magnitude,
-      }}
-    >
-      <Box component="img" src={iconUrl(pokemon.name)} alt="" sx={{ width: 88, height: 88, objectFit: "contain" }} />
-      <Typography variant="subtitle2" noWrap sx={{ maxWidth: "90%" }}>
-        {pokemon.name}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
-        #{String(pokemon.number).padStart(3, "0")}
-      </Typography>
-    </Card>
-  );
-};
+const CARD_WIDTH = 260;
+const CARD_HEIGHT = 420;
+const TRANSITION = "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease";
 
 export const CapturedDeck = ({
   items,
@@ -72,10 +39,9 @@ export const CapturedDeck = ({
   releasingName?: string;
 }) => {
   const center = items[centerIndex];
-  const peeks = useMemo(() => {
+  const cards = useMemo(() => {
     const result: { pokemon: Pokemon; offset: number }[] = [];
     for (let offset = -MAX_PEEK; offset <= MAX_PEEK; offset++) {
-      if (offset === 0) continue;
       const pokemon = items[centerIndex + offset];
       if (pokemon) result.push({ pokemon, offset });
     }
@@ -86,32 +52,42 @@ export const CapturedDeck = ({
 
   return (
     <Box>
-      <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 600, mb: 1 }}>
-        {items.length} captured
-      </Typography>
       <Box sx={{ position: "relative", height: 460 }}>
-        {peeks.map(({ pokemon, offset }) => (
-          <PeekCard key={pokemon.name} pokemon={pokemon} offset={offset} />
-        ))}
-        <Box
-          sx={{
-            position: "absolute",
-            left: "50%",
-            top: 0,
-            width: 260,
-            height: 420,
-            transition: "transform 0.2s ease",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-          }}
-        >
-          <PokemonCard
-            pokemon={center}
-            captured
-            captureLoading={releasingName === center.name}
-            onToggleCapture={() => onRelease(center)}
-          />
-        </Box>
+        {cards.map(({ pokemon, offset }) => {
+          const magnitude = Math.min(Math.abs(offset), MAX_PEEK);
+          const step = FAN_STEPS[magnitude];
+          const sign = Math.sign(offset);
+          const isCenter = offset === 0;
+          return (
+            <Box
+              key={pokemon.name}
+              // Peeking cards are decorative -- arrow buttons are the only
+              // navigation for this iteration -- so they're excluded from
+              // the accessibility tree and can't steal focus/clicks even
+              // though they render a real, otherwise-interactive PokemonCard.
+              inert={!isCenter}
+              sx={{
+                position: "absolute",
+                left: "50%",
+                top: 0,
+                width: CARD_WIDTH,
+                height: CARD_HEIGHT,
+                transition: TRANSITION,
+                transform: `translateX(calc(-50% + ${sign * step.dx}px)) translateY(${step.dy}px) rotate(${sign * step.rotate}deg) scale(${step.scale})`,
+                opacity: step.opacity,
+                zIndex: 10 - magnitude,
+                pointerEvents: isCenter ? "auto" : "none",
+              }}
+            >
+              <PokemonCard
+                pokemon={pokemon}
+                captured
+                captureLoading={releasingName === pokemon.name}
+                onToggleCapture={() => onRelease(pokemon)}
+              />
+            </Box>
+          );
+        })}
         <IconButton
           aria-label="Previous captured Pokémon"
           disabled={centerIndex === 0}
@@ -129,6 +105,9 @@ export const CapturedDeck = ({
           <ChevronRightIcon />
         </IconButton>
       </Box>
+      <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 600, mt: 1 }}>
+        {items.length} captured!
+      </Typography>
     </Box>
   );
 };

@@ -58,9 +58,10 @@ describe("CapturedPage", () => {
     await waitFor(() =>
       expect(screen.getByText("Your bag is empty")).toBeInTheDocument(),
     );
-    expect(
-      screen.getByRole("link", { name: /back to the pokédex/i }),
-    ).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /^back$/i })).toHaveAttribute(
+      "href",
+      "/",
+    );
   });
 
   it("centers the card named in ?card= on load", async () => {
@@ -116,7 +117,7 @@ describe("CapturedPage", () => {
     expect(
       screen.getByRole("button", { name: /release squirtle/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("2 captured")).toBeInTheDocument();
+    expect(screen.getByText("2 captured!")).toBeInTheDocument();
   });
 
   it("shows an error message when releasing fails", async () => {

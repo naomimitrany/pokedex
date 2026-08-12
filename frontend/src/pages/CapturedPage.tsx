@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Snackbar from "@mui/material/Snackbar";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { CapturedDeck } from "../components/pokedex/CapturedDeck";
 import { EmptyState } from "../components/general/EmptyState";
 import { ErrorState } from "../components/general/ErrorState";
@@ -83,6 +84,11 @@ export const CapturedPage = () => {
 
   return (
     <>
+      <Box sx={{ px: 2, pt: 2 }}>
+        <Button component={Link} to="/" startIcon={<ArrowBackIcon />}>
+          Back
+        </Button>
+      </Box>
       <Container maxWidth="md" sx={{ py: 3 }}>
         {captured.isLoading ? (
           <Grid container spacing={2} sx={{ justifyContent: "center" }}>
@@ -98,9 +104,6 @@ export const CapturedPage = () => {
               title="Your bag is empty"
               description="Capture some Pokémon to see them here."
             />
-            <Button component={Link} to="/" variant="contained" sx={{ mt: 1 }}>
-              Back to the Pokédex
-            </Button>
           </Box>
         ) : (
           <CapturedDeck

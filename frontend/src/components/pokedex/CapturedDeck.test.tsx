@@ -31,7 +31,7 @@ describe("CapturedDeck", () => {
       <CapturedDeck items={ITEMS} centerIndex={1} onNavigate={vi.fn()} onRelease={vi.fn()} />,
     );
 
-    expect(screen.getByText("3 captured")).toBeInTheDocument();
+    expect(screen.getByText("3 captured!")).toBeInTheDocument();
     expect(screen.getByText("Charmander")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /release charmander/i }),
