@@ -238,6 +238,7 @@ export const PokemonDetailPage = () => {
                 glow={typeColor(types[0] ?? "")}
                 size={200}
                 background="transparent"
+                lazy={false}
               />
               <Typography
                 component="h2"

@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { BagFab } from "./components/pokedex/BagFab";
 import { NavBar } from "./components/navbar/NavBar";
 import { CapturedPage } from "./pages/CapturedPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { PokedexPage } from "./pages/PokedexPage";
 import { PokemonDetailPage } from "./pages/PokemonDetailPage";
 
@@ -37,6 +38,7 @@ const App = () => (
         <Route path="/" element={<PokedexPage />} />
         <Route path="/pokemon/:name" element={<PokemonDetailPage />} />
         <Route path="/captured" element={<CapturedPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Box>
     <BagFab />

@@ -42,16 +42,14 @@ export const useCaptureFlow = () => {
   const handleLoginSubmit = useCallback(
     async (username: string) => {
       await loginMutation.login(username);
-      setPendingCapture((current) => {
-        if (current) {
-          // pendingCapture only ever arises from a capture click on an
-          // anonymous (therefore always-uncaptured) card.
-          captureMutation.mutate({ pokemon: current, captured: false });
-        }
-        return null;
-      });
+      // pendingCapture only ever arises from a capture click on an
+      // anonymous (therefore always-uncaptured) card.
+      if (pendingCapture) {
+        captureMutation.mutate({ pokemon: pendingCapture, captured: false });
+      }
+      setPendingCapture(null);
     },
-    [loginMutation, captureMutation],
+    [loginMutation, captureMutation, pendingCapture],
   );
 
   return {

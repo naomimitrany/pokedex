@@ -21,7 +21,7 @@ A Pokédex web app: a Flask API backend serving Pokémon data, plus a React/Type
 - `db.get()` returns the entire Pokémon list on every call (2s latency included) — treat the DB as live/mutable during the server's lifetime (data can change between calls), and don't assume you can cache it forever.
 - Pokémon fields (see `backend/pokemon_db.json`): `number`, `name`, `type_one`, `type_two`, `total`, `hit_points`, `attack`, `defense`, `special_attack`, `special_defense`, `speed`, `generation`, `legendary`.
 - Pokémon sprite images: `GET /icon/<name>` redirects (302) to the PokeAPI official-artwork CDN for that Pokémon's `number`.
-- `app.py` endpoints: `GET /pokemon` (paginated/sorted/filtered list, query params validated in `request_args.py`), `GET /pokemon/<name>`, `GET /types`, `GET /icon/<name>`, `POST /login`, `POST /logout`, `GET /me`, `POST /captures`, `DELETE /captures/<name>`. Capture endpoints require a logged-in session (`accounts.py`); see the login/accounts note under Assignment Requirements.
+- `app.py` endpoints: `GET /pokemon` (paginated/sorted/filtered list, query params validated in `request_args.py`), `GET /pokemon/<name>`, `GET /types`, `GET /icon/<name>`, `POST /login`, `POST /logout`, `GET /me`, `GET /captures`, `POST /captures`, `DELETE /captures/<name>`. Capture endpoints require a logged-in session (`accounts.py`); see the login/accounts note under Assignment Requirements.
 - `pokemon_service.py` wraps `db.get()` in a short-TTL cache with a single-flight guard so concurrent requests don't each pay the 2s latency, while still refreshing periodically since the DB is treated as live.
 
 ## Frontend

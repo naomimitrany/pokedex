@@ -1,5 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient } from "@tanstack/react-query";
 import { Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -97,6 +98,9 @@ describe("PokemonDetailPage", () => {
       .mockRejectedValue(
         Object.assign(new Error("network error"), { isAxiosError: true }),
       );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
 
     renderWithProviders(
       <Routes>
@@ -106,14 +110,22 @@ describe("PokemonDetailPage", () => {
         initialEntries: [
           { pathname: "/pokemon/Bulbasaur", state: { pokemon: bulbasaur } },
         ],
+        queryClient,
       },
     );
 
-    // initialData renders the loaded page instantly, before the background
-    // refetch (simulated here as a rejection) has a chance to settle.
+    // initialData renders the loaded page instantly. staleTime holds off the
+    // automatic refetch-on-mount, so force the kind of later revalidation
+    // (e.g. window refocus) that can still fail once the data goes stale.
     expect(
       screen.getByRole("heading", { name: "Bulbasaur" }),
     ).toBeInTheDocument();
+
+    await act(async () => {
+      await queryClient.refetchQueries({
+        queryKey: ["pokemonDetail", "bulbasaur"],
+      });
+    });
 
     await waitFor(() => expect(fetchDetail).toHaveBeenCalled());
 

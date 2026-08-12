@@ -83,7 +83,16 @@ export const CapturedPage = () => {
 
   const handleNavigate = (direction: -1 | 1) => goTo(centerIndex + direction);
   const handleRelease = (pokemon: Pokemon) =>
-    captureMutation.mutate({ pokemon, captured: true });
+    captureMutation.mutate(
+      { pokemon, captured: true },
+      {
+        // The self-healing ?card= effect above already slid the URL to the
+        // next card optimistically. If the release fails, useCaptureMutation
+        // restores the cache but has no idea this page moved the URL -- put
+        // it back on the Pokemon the user actually acted on.
+        onError: () => setSearchParams({ card: pokemon.name }, { replace: true }),
+      },
+    );
 
   if (identityQuery.isLoading) return null;
   if (!identity.username) return <Navigate to="/" replace />;

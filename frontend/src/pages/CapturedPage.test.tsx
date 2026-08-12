@@ -153,4 +153,45 @@ describe("CapturedPage", () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it("keeps the released Pokémon centered when the release fails", async () => {
+    vi.spyOn(accountsApi, "fetchMe").mockResolvedValue({
+      username: "ash",
+      captured: ["Bulbasaur", "Charmander", "Squirtle"],
+    });
+    vi.spyOn(accountsApi, "fetchCaptures").mockResolvedValue([
+      BULBASAUR,
+      CHARMANDER,
+      SQUIRTLE,
+    ]);
+    vi.spyOn(accountsApi, "releasePokemon").mockRejectedValue(
+      new Error("network error"),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<CapturedPage />, {
+      initialEntries: ["/captured?card=Charmander"],
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /release charmander/i }),
+      ).toBeInTheDocument(),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /release charmander/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Couldn't update capture. Try again."),
+      ).toBeInTheDocument(),
+    );
+    // The optimistic release briefly slides Squirtle into center; once the
+    // request fails and the capture is restored, the deck should settle
+    // back on Charmander -- the Pokémon the user actually acted on -- not
+    // stay drifted onto whichever card took its place mid-flight.
+    expect(
+      screen.getByRole("button", { name: /release charmander/i }),
+    ).toBeInTheDocument();
+  });
 });

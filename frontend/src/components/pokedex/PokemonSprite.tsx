@@ -12,11 +12,13 @@ export const PokemonSprite = memo(
     glow,
     size = 140,
     background = "background.default",
+    lazy = true,
   }: {
     name: string;
     glow: string;
     size?: number;
     background?: string;
+    lazy?: boolean;
   }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageErrored, setImageErrored] = useState(false);
@@ -74,7 +76,7 @@ export const PokemonSprite = memo(
               component="img"
               src={iconUrl(name)}
               alt={name}
-              loading="lazy"
+              loading={lazy ? "lazy" : "eager"}
               decoding="async"
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageErrored(true)}

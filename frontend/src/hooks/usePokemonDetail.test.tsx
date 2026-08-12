@@ -26,7 +26,7 @@ describe("usePokemonDetail", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows the router-state pokemon immediately, and still revalidates in the background", async () => {
+  it("shows the router-state pokemon immediately without re-fetching within the staleTime window", async () => {
     const fetchSpy = vi
       .spyOn(pokemonApi, "fetchPokemonDetail")
       .mockResolvedValue(bulbasaur);
@@ -42,7 +42,10 @@ describe("usePokemonDetail", () => {
 
     expect(result.current.pokemon).toEqual(bulbasaur);
     expect(result.current.isLoading).toBe(false);
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith("Bulbasaur"));
+    // A card click already handed over full data via router state, so this
+    // shouldn't re-pay the 2s simulated latency for a just-navigated-to page.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("fetches from the API when there's no router state", async () => {

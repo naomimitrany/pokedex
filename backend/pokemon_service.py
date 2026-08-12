@@ -43,6 +43,11 @@ class PokemonService:
     def find_by_name(self, name):
         return self._snapshot()["by_name"].get(name.lower())
 
+    @cachedmethod(
+        lambda self: self._query_cache,
+        key=lambda self, names: keys.hashkey(self._snapshot()["version"], names),
+        lock=lambda self: self._query_lock,
+    )
     def pokemon_for_names(self, names):
         wanted = {n.lower() for n in names}
         matches = [
