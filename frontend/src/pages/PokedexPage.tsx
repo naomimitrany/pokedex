@@ -13,7 +13,7 @@ import { useIdentity } from "../hooks/useIdentity";
 import { useLoginMutation } from "../hooks/useLoginMutation";
 import { usePokemonList } from "../hooks/usePokemonList";
 import {
-  getSavedPages,
+  getSavedScrollEntry,
   useScrollRestoration,
 } from "../hooks/useScrollRestoration";
 import { useTypes } from "../hooks/useTypes";
@@ -21,7 +21,7 @@ import { useUrlState } from "../hooks/useUrlState";
 import type { Pokemon } from "../types";
 
 export const PokedexPage = () => {
-  const { state: filters, setFilters, setPages } = useUrlState();
+  const { state: filters, setFilters } = useUrlState();
   const types = useTypes();
   const identity = useIdentity();
   const captureMutation = useCaptureMutation();
@@ -33,23 +33,11 @@ export const PokedexPage = () => {
     [filters.pageSize, filters.sortBy, filters.order, filters.type, filters.q],
   );
 
-  // The URL's `pages` is written asynchronously once a fetch resolves, so it
-  // can lag behind what was actually on screen when the scroll position was
-  // last saved (see useScrollRestoration's getSavedPages). Restoring to
-  // whichever is larger guarantees enough content loads to reach the saved
-  // offset instead of clamping short of it.
+  // sessionStorage is the only source of restore depth now -- a fresh tab
+  // with nothing saved for this key just starts at page 1.
   const restoreToPage = useMemo(
-    () => Math.max(filters.pages, getSavedPages(scrollKey)),
-    [filters.pages, scrollKey],
-  );
-
-  const [loadedPages, setLoadedPages] = useState(restoreToPage);
-  const handlePagesChange = useCallback(
-    (pages: number) => {
-      setLoadedPages(pages);
-      setPages(pages);
-    },
-    [setPages],
+    () => getSavedScrollEntry(scrollKey)?.pages ?? 1,
+    [scrollKey],
   );
 
   const list = usePokemonList({
@@ -61,7 +49,6 @@ export const PokedexPage = () => {
       q: filters.q,
     },
     restoreToPage,
-    onPagesChange: handlePagesChange,
   });
 
   useEffect(() => {
@@ -84,8 +71,15 @@ export const PokedexPage = () => {
     // consume the one-shot restore against an empty error view, leaving a
     // later successful retry with no saved position left to apply.
     !list.isLoading && !list.isRestoring && !list.error,
-    loadedPages,
+    list.loadedPages,
   );
+
+  // How many cards from the initial restore fetch should stay exempt from
+  // content-visibility -- see the comment on PokemonGrid's `restoredCount`
+  // prop. 0 when there was nothing to restore, so an ordinary load (no
+  // saved position) is unaffected.
+  const restoredCount =
+    restoreToPage > 1 ? restoreToPage * filters.pageSize : 0;
 
   const [pendingCapture, setPendingCapture] = useState<Pokemon | null>(null);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
@@ -174,7 +168,7 @@ export const PokedexPage = () => {
               onRetry={list.retry}
               onToggleCapture={handleToggleCapture}
               pageSize={filters.pageSize}
-              restoringScroll={!scrollRestored}
+              restoredCount={restoredCount}
             />
           </Box>
         )}
