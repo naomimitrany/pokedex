@@ -25,15 +25,6 @@ class PokemonService:
         condition=lambda self: self._condition,
     )
     def _snapshot(self):
-        """The one place `db.get()` is called.
-
-        Computes the raw list alongside everything derived from a full pass
-        over it -- a name lookup dict, the sorted type list, and a version
-        number -- so those derivations happen once per snapshot instead of
-        once per request. The version lets `_filtered_sorted` detect a
-        refreshed snapshot without keying on `id()`, which CPython can reuse
-        across allocations once the old snapshot dict is freed.
-        """
         pokemon = db.get()
         types = {p.get("type_one", "") for p in pokemon} | {
             p.get("type_two", "") for p in pokemon
@@ -123,10 +114,6 @@ class PokemonService:
 
     @staticmethod
     def sort_pokemon(pokemon, sort_by, descending):
-        # Two stable passes so the name tie-break always reads ascending,
-        # regardless of `descending` -- a single `reverse=descending` on the
-        # combined (sort_by, name) tuple would flip the tie-break direction
-        # too, which is surprising (e.g. "descending" ties sorting Z-to-A).
         by_name = sorted(pokemon, key=lambda p: p["name"])
         return sorted(by_name, key=lambda p: p[sort_by], reverse=descending)
 
