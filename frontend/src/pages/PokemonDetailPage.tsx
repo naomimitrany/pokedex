@@ -1,4 +1,5 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -16,13 +17,19 @@ import { PokemonStats } from "../components/pokedex/PokemonStats";
 import { ErrorState } from "../components/general/ErrorState";
 import { useCaptureFlow } from "../hooks/useCaptureFlow";
 import { usePokemonDetail } from "../hooks/usePokemonDetail";
+import { getScrollContainer } from "../utils/scrollContainer";
 import { typeColor, typeGradient } from "../utils/typeColors";
 
 export const PokemonDetailPage = () => {
   const { name = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const detail = usePokemonDetail(name);
   const captureFlow = useCaptureFlow();
+
+  useLayoutEffect(() => {
+    getScrollContainer()?.scrollTo({ top: 0 });
+  }, []);
 
   if (detail.isLoading) {
     return (
@@ -42,18 +49,23 @@ export const PokemonDetailPage = () => {
     );
   }
 
-  if (detail.notFound) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 3 }}>
-        <Alert severity="warning">No Pokémon named "{name}".</Alert>
-        <Button component={Link} to="/" sx={{ mt: 2 }}>
-          Back to Pokédex
-        </Button>
-      </Container>
-    );
-  }
+  // Check for loaded data before the error/not-found branches: a background
+  // revalidation (e.g. refetchOnWindowFocus) can fail while `pokemon` is
+  // still populated from router-state initialData or a prior successful
+  // fetch. Discarding a fully-rendered page for an error view in that case
+  // would throw away data the user already has.
+  if (!detail.pokemon) {
+    if (detail.notFound) {
+      return (
+        <Container maxWidth="sm" sx={{ py: 3 }}>
+          <Alert severity="warning">No Pokémon named "{name}".</Alert>
+          <Button component={Link} to="/" sx={{ mt: 2 }}>
+            Back to Pokédex
+          </Button>
+        </Container>
+      );
+    }
 
-  if (detail.isError || !detail.pokemon) {
     return (
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <ErrorState
@@ -72,7 +84,9 @@ export const PokemonDetailPage = () => {
     <Container maxWidth="sm" sx={{ py: 3 }}>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate(-1)}
+        onClick={() =>
+          location.key === "default" ? navigate("/") : navigate(-1)
+        }
         sx={{ mb: 2, textTransform: "none" }}
       >
         Back
@@ -96,7 +110,7 @@ export const PokemonDetailPage = () => {
         />
         <PokemonSprite name={pokemon.name} glow={typeColor(types[0] ?? "")} />
         <Typography
-          component="h1"
+          component="h2"
           sx={{
             fontFamily: "'Baloo 2', sans-serif",
             fontWeight: 700,
@@ -109,6 +123,7 @@ export const PokemonDetailPage = () => {
         </Typography>
         <Typography
           variant="subtitle1"
+          component="p"
           sx={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}
         >
           #{String(pokemon.number).padStart(3, "0")}
@@ -146,13 +161,17 @@ export const PokemonDetailPage = () => {
           <Typography variant="caption" color="text.secondary">
             Total
           </Typography>
-          <Typography variant="h6">{pokemon.total}</Typography>
+          <Typography variant="h6" component="p">
+            {pokemon.total}
+          </Typography>
         </Box>
         <Box>
           <Typography variant="caption" color="text.secondary">
             Generation
           </Typography>
-          <Typography variant="h6">{pokemon.generation}</Typography>
+          <Typography variant="h6" component="p">
+            {pokemon.generation}
+          </Typography>
         </Box>
       </Stack>
 

@@ -87,6 +87,43 @@ describe("PokemonDetailPage", () => {
     );
   });
 
+  it("keeps the loaded page visible when a background refetch fails", async () => {
+    vi.spyOn(accountsApi, "fetchMe").mockResolvedValue({
+      username: null,
+      captured: [],
+    });
+    const fetchDetail = vi
+      .spyOn(pokemonApi, "fetchPokemonDetail")
+      .mockRejectedValue(
+        Object.assign(new Error("network error"), { isAxiosError: true }),
+      );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/pokemon/:name" element={<PokemonDetailPage />} />
+      </Routes>,
+      {
+        initialEntries: [
+          { pathname: "/pokemon/Bulbasaur", state: { pokemon: bulbasaur } },
+        ],
+      },
+    );
+
+    // initialData renders the loaded page instantly, before the background
+    // refetch (simulated here as a rejection) has a chance to settle.
+    expect(
+      screen.getByRole("heading", { name: "Bulbasaur" }),
+    ).toBeInTheDocument();
+
+    await waitFor(() => expect(fetchDetail).toHaveBeenCalled());
+
+    expect(
+      screen.getByRole("heading", { name: "Bulbasaur" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no pokémon named/i)).not.toBeInTheDocument();
+  });
+
   it("opens the login prompt when capturing while logged out", async () => {
     vi.spyOn(pokemonApi, "fetchPokemonDetail").mockResolvedValue(bulbasaur);
     const user = userEvent.setup();

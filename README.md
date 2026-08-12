@@ -77,3 +77,5 @@ Since some requirements were open to interpretation, here's what I assumed and w
 4. **Cached the full Pokémon list on the server for 500 seconds** to avoid paying the simulated 2-second `db.get()` latency on every request.
 
 5. **Persisted page/scroll position in `sessionStorage`, not the URL.** The requirement asks for a refresh to keep the user on the same page; a URL query param would do that but would also make every scroll tick a candidate for a URL update (or otherwise decouple "page in the URL" from "what's actually scrolled into view"). Keying a saved scroll depth off the current filters in `sessionStorage` gets the same refresh-survives behavior per tab without either problem, at the cost of not being a shareable/bookmarkable link back to a specific page.
+
+6. **Added a Pokémon detail page at `/pokemon/:name`.** Not explicitly required, but it's the natural target for clicking a grid card. Clicking a card carries that row's data along via router state so the detail page renders instantly on navigation, with a network fetch to `GET /pokemon/<name>` as the fallback (and background revalidation) for direct visits, refreshes, or shared links.
