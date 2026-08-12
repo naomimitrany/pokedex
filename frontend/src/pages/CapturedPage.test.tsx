@@ -78,7 +78,9 @@ describe("CapturedPage", () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText("Squirtle")).toBeInTheDocument(),
+      expect(
+        screen.getByRole("button", { name: /release squirtle/i }),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -111,7 +113,43 @@ describe("CapturedPage", () => {
     await waitFor(() =>
       expect(screen.queryByText("Charmander")).not.toBeInTheDocument(),
     );
-    expect(screen.getByText("Squirtle")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /release squirtle/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("2 captured")).toBeInTheDocument();
+  });
+
+  it("shows an error message when releasing fails", async () => {
+    vi.spyOn(accountsApi, "fetchMe").mockResolvedValue({
+      username: "ash",
+      captured: ["Bulbasaur", "Charmander", "Squirtle"],
+    });
+    vi.spyOn(accountsApi, "fetchCaptures").mockResolvedValue([
+      BULBASAUR,
+      CHARMANDER,
+      SQUIRTLE,
+    ]);
+    vi.spyOn(accountsApi, "releasePokemon").mockRejectedValue(
+      new Error("network error"),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<CapturedPage />, {
+      initialEntries: ["/captured?card=Charmander"],
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /release charmander/i }),
+      ).toBeInTheDocument(),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /release charmander/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Couldn't update capture. Try again."),
+      ).toBeInTheDocument(),
+    );
   });
 });

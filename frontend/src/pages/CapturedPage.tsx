@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
+import Snackbar from "@mui/material/Snackbar";
 import { CapturedDeck } from "../components/pokedex/CapturedDeck";
 import { EmptyState } from "../components/general/EmptyState";
 import { ErrorState } from "../components/general/ErrorState";
@@ -29,6 +31,13 @@ export const CapturedPage = () => {
   const captureMutation = useCaptureMutation();
   const [searchParams, setSearchParams] = useSearchParams();
   const lastIndexRef = useRef(0);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (captureMutation.isError) {
+      setSnackbarMessage("Couldn't update capture. Try again.");
+    }
+  }, [captureMutation.isError]);
 
   const items = captured.data ?? [];
   const requestedName = searchParams.get("card");
@@ -73,38 +82,49 @@ export const CapturedPage = () => {
   if (!identity.username) return <Navigate to="/" replace />;
 
   return (
-    <Container maxWidth="md" sx={{ py: 3 }}>
-      {captured.isLoading ? (
-        <Grid container spacing={2} sx={{ justifyContent: "center" }}>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <PokemonCardSkeleton />
+    <>
+      <Container maxWidth="md" sx={{ py: 3 }}>
+        {captured.isLoading ? (
+          <Grid container spacing={2} sx={{ justifyContent: "center" }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <PokemonCardSkeleton />
+            </Grid>
           </Grid>
-        </Grid>
-      ) : captured.error ? (
-        <ErrorState message={captured.error} onRetry={captured.retry} />
-      ) : items.length === 0 ? (
-        <Box sx={{ textAlign: "center" }}>
-          <EmptyState
-            title="Your bag is empty"
-            description="Capture some Pokémon to see them here."
+        ) : captured.error ? (
+          <ErrorState message={captured.error} onRetry={captured.retry} />
+        ) : items.length === 0 ? (
+          <Box sx={{ textAlign: "center" }}>
+            <EmptyState
+              title="Your bag is empty"
+              description="Capture some Pokémon to see them here."
+            />
+            <Button component={Link} to="/" variant="contained" sx={{ mt: 1 }}>
+              Back to the Pokédex
+            </Button>
+          </Box>
+        ) : (
+          <CapturedDeck
+            items={items}
+            centerIndex={centerIndex}
+            onNavigate={handleNavigate}
+            onRelease={handleRelease}
+            releasingName={
+              captureMutation.isPending
+                ? captureMutation.variables?.pokemon.name
+                : undefined
+            }
           />
-          <Button component={Link} to="/" variant="contained" sx={{ mt: 1 }}>
-            Back to the Pokédex
-          </Button>
-        </Box>
-      ) : (
-        <CapturedDeck
-          items={items}
-          centerIndex={centerIndex}
-          onNavigate={handleNavigate}
-          onRelease={handleRelease}
-          releasingName={
-            captureMutation.isPending
-              ? captureMutation.variables?.pokemon.name
-              : undefined
-          }
-        />
-      )}
-    </Container>
+        )}
+      </Container>
+      <Snackbar
+        open={snackbarMessage !== null}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarMessage(null)}
+      >
+        <Alert severity="error" onClose={() => setSnackbarMessage(null)}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };

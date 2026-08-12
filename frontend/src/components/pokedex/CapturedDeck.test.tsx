@@ -33,6 +33,9 @@ describe("CapturedDeck", () => {
 
     expect(screen.getByText("3 captured")).toBeInTheDocument();
     expect(screen.getByText("Charmander")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /release charmander/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows peeking neighbors by name", () => {

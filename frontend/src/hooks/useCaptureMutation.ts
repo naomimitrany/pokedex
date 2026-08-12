@@ -29,10 +29,10 @@ export const useCaptureMutation = () => {
 
       const previousCaptures = queryClient.getQueryData<Pokemon[]>(CAPTURES_QUERY_KEY);
       queryClient.setQueryData<Pokemon[]>(CAPTURES_QUERY_KEY, (current) => {
-        const base = current ?? [];
-        if (captured) return base.filter((p) => p.name !== pokemon.name);
-        if (base.some((p) => p.name === pokemon.name)) return base;
-        return [...base, pokemon].sort((a, b) => a.number - b.number);
+        if (!current) return current;
+        if (captured) return current.filter((p) => p.name !== pokemon.name);
+        if (current.some((p) => p.name === pokemon.name)) return current;
+        return [...current, pokemon].sort((a, b) => a.number - b.number);
       });
 
       return { previousMe, previousCaptures };
