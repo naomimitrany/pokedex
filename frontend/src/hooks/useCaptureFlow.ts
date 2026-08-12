@@ -24,7 +24,7 @@ export const useCaptureFlow = () => {
   );
 
   const capturingName = captureMutation.isPending
-    ? captureMutation.variables?.name
+    ? captureMutation.variables?.pokemon.name
     : undefined;
 
   const captureMutate = captureMutation.mutate;
@@ -34,7 +34,7 @@ export const useCaptureFlow = () => {
         setPendingCapture(pokemon);
         return;
       }
-      captureMutate({ name: pokemon.name, captured });
+      captureMutate({ pokemon, captured });
     },
     [identity.username, captureMutate],
   );
@@ -46,7 +46,7 @@ export const useCaptureFlow = () => {
         if (current) {
           // pendingCapture only ever arises from a capture click on an
           // anonymous (therefore always-uncaptured) card.
-          captureMutation.mutate({ name: current.name, captured: false });
+          captureMutation.mutate({ pokemon: current, captured: false });
         }
         return null;
       });

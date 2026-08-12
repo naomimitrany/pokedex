@@ -1,36 +1,57 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { capturePokemon, releasePokemon } from "../api/accounts";
 import { ME_QUERY_KEY } from "./useIdentity";
-import type { Identity } from "../types";
+import { CAPTURES_QUERY_KEY } from "./useCapturedPokemon";
+import type { Identity, Pokemon } from "../types";
+
+type CaptureVariables = { pokemon: Pokemon; captured: boolean };
 
 export const useCaptureMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ name, captured }: { name: string; captured: boolean }) =>
-      captured ? releasePokemon(name) : capturePokemon(name),
-    onMutate: async ({ name, captured }) => {
+    mutationFn: ({ pokemon, captured }: CaptureVariables) =>
+      captured ? releasePokemon(pokemon.name) : capturePokemon(pokemon.name),
+    onMutate: async ({ pokemon, captured }: CaptureVariables) => {
       await queryClient.cancelQueries({ queryKey: ME_QUERY_KEY });
-      const previous = queryClient.getQueryData<Identity>(ME_QUERY_KEY);
+      await queryClient.cancelQueries({ queryKey: CAPTURES_QUERY_KEY });
+
+      const previousMe = queryClient.getQueryData<Identity>(ME_QUERY_KEY);
       queryClient.setQueryData<Identity>(ME_QUERY_KEY, (current) => {
         const base = current ?? { username: null, captured: [] };
         return {
           ...base,
           captured: captured
-            ? base.captured.filter((n) => n !== name)
-            : [...base.captured, name],
+            ? base.captured.filter((n) => n !== pokemon.name)
+            : [...base.captured, pokemon.name],
         };
       });
-      return { previous };
+
+      const previousCaptures = queryClient.getQueryData<Pokemon[]>(CAPTURES_QUERY_KEY);
+      queryClient.setQueryData<Pokemon[]>(CAPTURES_QUERY_KEY, (current) => {
+        if (!current) return current;
+        if (captured) return current.filter((p) => p.name !== pokemon.name);
+        if (current.some((p) => p.name === pokemon.name)) return current;
+        return [...current, pokemon].sort((a, b) => a.number - b.number);
+      });
+
+      return { previousMe, previousCaptures };
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(ME_QUERY_KEY, context.previous);
+      if (context?.previousMe) queryClient.setQueryData(ME_QUERY_KEY, context.previousMe);
+      if (context?.previousCaptures) {
+        queryClient.setQueryData(CAPTURES_QUERY_KEY, context.previousCaptures);
+      }
     },
     onSuccess: (result) => {
       queryClient.setQueryData<Identity>(ME_QUERY_KEY, (current) => {
         const base = current ?? { username: null, captured: [] };
         const withoutName = base.captured.filter((n) => n !== result.name);
         return { ...base, captured: result.captured ? [...withoutName, result.name] : withoutName };
+      });
+      queryClient.setQueryData<Pokemon[]>(CAPTURES_QUERY_KEY, (current) => {
+        if (!current) return current;
+        return result.captured ? current : current.filter((p) => p.name !== result.name);
       });
     },
   });

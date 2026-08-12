@@ -140,3 +140,51 @@ class TestPokemonListDoesNotExposeCaptureState:
         body = ash.get("/pokemon").get_json()
 
         assert all("captured" not in p for p in body["items"])
+
+
+class TestCapturesEndpoint:
+    def test_requires_login(self, client):
+        assert client.get("/captures").status_code == 401
+
+    def test_returns_full_pokemon_objects_for_captured_names(self, ash):
+        ash.post("/captures", json={"name": "Charmander"})
+        ash.post("/captures", json={"name": "Squirtle"})
+
+        response = ash.get("/captures")
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert [p["name"] for p in body] == ["Charmander", "Squirtle"]
+        assert body[0] == {
+            "number": 4,
+            "name": "Charmander",
+            "type_one": "Fire",
+            "type_two": "",
+            "total": 309,
+            "hit_points": 50,
+            "attack": 50,
+            "defense": 50,
+            "special_attack": 50,
+            "special_defense": 50,
+            "speed": 50,
+            "generation": 1,
+            "legendary": False,
+        }
+
+    def test_sorted_by_number_regardless_of_capture_order(self, ash):
+        ash.post("/captures", json={"name": "Squirtle"})
+        ash.post("/captures", json={"name": "Bulbasaur"})
+
+        body = ash.get("/captures").get_json()
+
+        assert [p["name"] for p in body] == ["Bulbasaur", "Squirtle"]
+
+    def test_empty_when_nothing_captured(self, ash):
+        assert ash.get("/captures").get_json() == []
+
+    def test_only_returns_this_users_captures(self, ash, make_client):
+        misty = make_client("misty")
+        ash.post("/captures", json={"name": "Squirtle"})
+        misty.post("/captures", json={"name": "Bulbasaur"})
+
+        assert [p["name"] for p in ash.get("/captures").get_json()] == ["Squirtle"]
