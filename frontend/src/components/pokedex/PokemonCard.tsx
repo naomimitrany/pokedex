@@ -73,9 +73,8 @@ export const PokemonCard = memo(
         >
           {/* Stretched link: makes the whole card navigable without nesting
               CaptureButton's <button> inside an <a>, which is invalid HTML
-              and confuses screen readers. Sits below the sprite/button
-              wrapper's higher z-index so the capture button stays clickable
-              on top of it. */}
+              and confuses screen readers. CaptureButton has its own zIndex
+              above this so it stays clickable; nothing else needs to. */}
           <Box
             component={Link}
             to={`/pokemon/${encodeURIComponent(pokemon.name)}`}
@@ -122,7 +121,7 @@ export const PokemonCard = memo(
             </Typography>
           </Box>
 
-          <Box sx={{ position: "relative", zIndex: 2 }}>
+          <Box sx={{ position: "relative" }}>
             <PokemonSprite name={pokemon.name} glow={glow} />
             <CaptureButton
               name={pokemon.name}

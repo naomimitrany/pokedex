@@ -43,6 +43,7 @@ export const CaptureButton = memo(
           }}
           sx={{
             position: "absolute",
+            zIndex: 2,
             top: inset,
             right: inset,
             bgcolor: "background.paper",
