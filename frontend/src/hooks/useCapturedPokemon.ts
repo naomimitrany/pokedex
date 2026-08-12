@@ -15,8 +15,8 @@ export const useCapturedPokemon = () => {
   });
 
   return {
-    data: query.data as Pokemon[] | undefined,
-    isLoading: query.isPending,
+    data: query.data,
+    isLoading: query.isLoading,
     error: query.isError ? getErrorMessage(query.error) : null,
     retry: () => {
       void query.refetch();
