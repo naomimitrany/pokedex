@@ -19,11 +19,13 @@ export const CaptureButton = memo(
     captured,
     loading,
     onToggle,
+    inset = 6,
   }: {
     name: string;
     captured: boolean;
     loading?: boolean;
     onToggle: () => void;
+    inset?: number;
   }) => {
     const [isShaking, setIsShaking] = useState(false);
 
@@ -41,8 +43,8 @@ export const CaptureButton = memo(
           }}
           sx={{
             position: "absolute",
-            top: 6,
-            right: 6,
+            top: inset,
+            right: inset,
             bgcolor: "background.paper",
             boxShadow: 2,
             border: "2px solid",
