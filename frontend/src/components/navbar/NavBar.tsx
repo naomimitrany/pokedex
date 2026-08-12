@@ -4,7 +4,18 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
+import { DEFAULT_PAGE_SIZE, DEFAULT_SORT_FIELD } from "../../constants";
+import { clearSavedScroll } from "../../hooks/useScrollRestoration";
 import { getScrollContainer } from "../../utils/scrollContainer";
+import { buildScrollKey } from "../../utils/scrollKey";
+
+const DEFAULT_SCROLL_KEY = buildScrollKey({
+  pageSize: DEFAULT_PAGE_SIZE,
+  sortBy: DEFAULT_SORT_FIELD,
+  order: "asc",
+  type: null,
+  q: "",
+});
 
 export const NavBar = () => (
   <AppBar
@@ -23,9 +34,15 @@ export const NavBar = () => (
       <Stack
         component={Link}
         to="/"
-        onClick={() =>
-          getScrollContainer()?.scrollTo({ top: 0, behavior: "smooth" })
-        }
+        onClick={() => {
+          // Clicking the title is an explicit "start over", not a returning
+          // session -- clear whatever scroll position was last saved for the
+          // default view so this always lands at a clean top, instead of
+          // scroll restoration faithfully re-fetching and jumping back down
+          // to wherever an earlier visit left off.
+          clearSavedScroll(DEFAULT_SCROLL_KEY);
+          getScrollContainer()?.scrollTo({ top: 0, behavior: "smooth" });
+        }}
         direction="row"
         spacing={1}
         sx={{

@@ -19,6 +19,7 @@ import {
 import { useTypes } from "../hooks/useTypes";
 import { useUrlState } from "../hooks/useUrlState";
 import type { Pokemon } from "../types";
+import { buildScrollKey } from "../utils/scrollKey";
 
 export const PokedexPage = () => {
   const { state: filters, setFilters } = useUrlState();
@@ -28,8 +29,8 @@ export const PokedexPage = () => {
   const loginMutation = useLoginMutation();
 
   const scrollKey = useMemo(
-    () =>
-      `pokedex:scroll:${filters.pageSize}:${filters.sortBy}:${filters.order}:${filters.type ?? ""}:${filters.q}`,
+    () => buildScrollKey(filters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [filters.pageSize, filters.sortBy, filters.order, filters.type, filters.q],
   );
 

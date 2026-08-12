@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_AUTO_RESTORE_PAGES } from "../constants";
 import {
+  clearSavedScroll,
   getSavedScrollEntry,
   useScrollRestoration,
 } from "./useScrollRestoration";
@@ -188,5 +189,21 @@ describe("useScrollRestoration", () => {
         configurable: true,
       });
     }
+  });
+
+  it("clearSavedScroll removes both the saved entry and its LRU index membership", () => {
+    seed("pokedex:scroll:test", 500, 2);
+    sessionStorage.setItem(
+      "pokedex:scroll:index",
+      JSON.stringify(["pokedex:scroll:test", "pokedex:scroll:other"]),
+    );
+
+    clearSavedScroll("pokedex:scroll:test");
+
+    expect(getSavedScrollEntry("pokedex:scroll:test")).toBeNull();
+    const index = JSON.parse(
+      sessionStorage.getItem("pokedex:scroll:index") ?? "[]",
+    );
+    expect(index).toEqual(["pokedex:scroll:other"]);
   });
 });

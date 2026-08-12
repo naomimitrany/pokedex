@@ -75,6 +75,15 @@ export const getSavedScrollEntry = (
   };
 };
 
+// Explicitly forgets a saved scroll position -- used when a navigation is
+// a deliberate "start over" (e.g. clicking the navbar title) rather than a
+// returning session, so restoration doesn't fight that intent.
+export const clearSavedScroll = (scrollKey: string): void => {
+  sessionStorage.removeItem(scrollKey);
+  const index = readIndex().filter((k) => k !== scrollKey);
+  sessionStorage.setItem(INDEX_KEY, JSON.stringify(index));
+};
+
 export const useScrollRestoration = (
   scrollKey: string,
   ready: boolean,
