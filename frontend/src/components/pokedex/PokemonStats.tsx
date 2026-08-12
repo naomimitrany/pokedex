@@ -5,23 +5,19 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Pokemon } from "../../types";
 
-const STATS: { key: keyof Pokemon; label: string; color: string }[] = [
-  { key: "hit_points", label: "HP", color: "#FF5959" },
-  { key: "attack", label: "ATK", color: "#F5AC78" },
-  { key: "defense", label: "DEF", color: "#FAE078" },
-  { key: "special_attack", label: "SPA", color: "#9DB7F5" },
-  { key: "special_defense", label: "SPD", color: "#A7DB8D" },
-  { key: "speed", label: "SPE", color: "#FA92B2" },
+const STATS: {
+  key: keyof Pokemon;
+  label: string;
+  color: string;
+  max: number;
+}[] = [
+  { key: "hit_points", label: "HP", color: "#FF5959", max: 300 },
+  { key: "attack", label: "ATK", color: "#F5AC78", max: 200 },
+  { key: "defense", label: "DEF", color: "#FAE078", max: 300 },
+  { key: "special_attack", label: "SPA", color: "#9DB7F5", max: 200 },
+  { key: "special_defense", label: "SPD", color: "#A7DB8D", max: 300 },
+  { key: "speed", label: "SPE", color: "#FA92B2", max: 200 },
 ];
-
-const STAT_MAX: Record<string, number> = {
-  hit_points: 300,
-  attack: 200,
-  defense: 300,
-  special_attack: 200,
-  special_defense: 300,
-  speed: 200,
-};
 
 const StatBar = memo(
   ({
@@ -87,13 +83,13 @@ const StatBar = memo(
 
 export const PokemonStats = memo(({ pokemon }: { pokemon: Pokemon }) => (
   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-    {STATS.map(({ key, label, color }) => (
+    {STATS.map(({ key, label, color, max }) => (
       <StatBar
         key={label}
         label={label}
         value={pokemon[key] as number}
         color={color}
-        max={STAT_MAX[key]}
+        max={max}
       />
     ))}
   </Stack>
