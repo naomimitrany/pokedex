@@ -75,3 +75,5 @@ Since some requirements were open to interpretation, here's what I assumed and w
 3. **Kept page size selectable, but moved it out of the main filter bar.** It's a stated requirement, so the control still exists, but it's less central to navigation now that infinite scroll handles pagination, so I tucked it into a secondary menu instead.
 
 4. **Cached the full Pokémon list on the server for 500 seconds** to avoid paying the simulated 2-second `db.get()` latency on every request.
+
+5. **Persisted page/scroll position in `sessionStorage`, not the URL.** The requirement asks for a refresh to keep the user on the same page; a URL query param would do that but would also make every scroll tick a candidate for a URL update (or otherwise decouple "page in the URL" from "what's actually scrolled into view"). Keying a saved scroll depth off the current filters in `sessionStorage` gets the same refresh-survives behavior per tab without either problem, at the cost of not being a shareable/bookmarkable link back to a specific page.

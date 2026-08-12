@@ -116,7 +116,9 @@ def list_types():
 
 @app.get("/icon/<name>")
 def get_icon(name):
-    response = redirect(ICON_URL.format(number=_require_pokemon(name)["number"]), code=302)
+    response = redirect(
+        ICON_URL.format(number=_require_pokemon(name)["number"]), code=302
+    )
     response.headers["Cache-Control"] = "public, max-age=604800, immutable"
     return response
 
