@@ -126,6 +126,11 @@ export const useScrollRestoration = (
     setScrollRestored(isAlreadyRestored(scrollKey));
   }
 
+  // Set by the jump effect below, read by the font-settle correction that
+  // follows it -- a ref (not state) because writing it must not itself
+  // trigger a re-render.
+  const savedScrollTopRef = useRef(0);
+
   // One jump, before paint, once the restore-target content has rendered.
   // Cards that were part of that initial render stay exempt from
   // content-visibility for the life of this mount (see PokemonGrid's
@@ -135,9 +140,51 @@ export const useScrollRestoration = (
   useLayoutEffect(() => {
     if (scrollRestored || !ready) return;
     const entry = readEntry(scrollKey);
-    getScrollContainer()?.scrollTo({ top: entry?.scrollTop ?? 0 });
+    const savedScrollTop = entry?.scrollTop ?? 0;
+    savedScrollTopRef.current = savedScrollTop;
+    getScrollContainer()?.scrollTo({ top: savedScrollTop });
     setScrollRestored(true);
   }, [scrollRestored, ready, scrollKey]);
+
+  // Web fonts (card names/labels) swap in asynchronously after the initial
+  // paint; their metrics differ from the fallback font, which can reflow
+  // card heights just enough to leave the jump above a few px short or long
+  // by the time the real font settles. This corrects for that once, tied
+  // to the actual font-load completion event -- not a blind polling loop
+  // -- and backs off the moment the user actually scrolls/touches
+  // themselves. `document.fonts` doesn't exist in the jsdom test
+  // environment, so this is a no-op there (optional chaining), which is
+  // correct: there's no async font swap to correct for in tests either.
+  useEffect(() => {
+    if (!scrollRestored) return;
+    const savedScrollTop = savedScrollTopRef.current;
+    if (savedScrollTop <= 0) return;
+    const container = getScrollContainer();
+    if (!container) return;
+
+    let cancelled = false;
+    const cancel = () => {
+      cancelled = true;
+    };
+    container.addEventListener("wheel", cancel, { once: true, passive: true });
+    container.addEventListener("touchstart", cancel, {
+      once: true,
+      passive: true,
+    });
+
+    document.fonts?.ready?.then(() => {
+      if (cancelled) return;
+      if (container.scrollTop !== savedScrollTop) {
+        container.scrollTo({ top: savedScrollTop });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      container.removeEventListener("wheel", cancel);
+      container.removeEventListener("touchstart", cancel);
+    };
+  }, [scrollRestored]);
 
   return scrollRestored;
 };

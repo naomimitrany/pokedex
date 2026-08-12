@@ -153,4 +153,40 @@ describe("useScrollRestoration", () => {
       vi.useRealTimers();
     }
   });
+
+  it("re-applies the saved scrollTop once document.fonts.ready resolves, correcting drift from a late font swap", async () => {
+    seed("pokedex:scroll:test", 500, 1);
+    let resolveFontsReady!: () => void;
+    const fontsReady = new Promise<void>((resolve) => {
+      resolveFontsReady = resolve;
+    });
+    const originalFonts = document.fonts;
+    Object.defineProperty(document, "fonts", {
+      value: { ready: fontsReady },
+      configurable: true,
+    });
+
+    try {
+      const { result } = renderHook(() =>
+        useScrollRestoration("pokedex:scroll:test", true, 1),
+      );
+      expect(result.current).toBe(true);
+      expect(main.scrollTo).toHaveBeenCalledWith({ top: 500 });
+
+      // Simulate a font-swap reflow nudging the container off target.
+      main.scrollTop = 470;
+      (main.scrollTo as ReturnType<typeof vi.fn>).mockClear();
+
+      resolveFontsReady();
+      await fontsReady;
+      await Promise.resolve(); // flush the .then() microtask
+
+      expect(main.scrollTo).toHaveBeenCalledWith({ top: 500 });
+    } finally {
+      Object.defineProperty(document, "fonts", {
+        value: originalFonts,
+        configurable: true,
+      });
+    }
+  });
 });
