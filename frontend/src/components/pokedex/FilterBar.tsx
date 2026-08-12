@@ -34,12 +34,6 @@ export const FilterBar = ({
 }) => {
   const [query, setQuery] = useState(filters.q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Tracks the last value we sent via onChange, so the sync-back effect
-  // below can tell "the parent caught up with what we typed" (skip) apart
-  // from "the parent changed q for some other reason" (e.g. browser
-  // back/forward — apply it). Without this, a debounce commit landing back
-  // as a prop while the user kept typing would snap the field back and
-  // erase whatever they'd typed since.
   const lastSentRef = useRef(filters.q);
 
   useEffect(() => {

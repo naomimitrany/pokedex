@@ -15,7 +15,8 @@ const App = () => (
         overflowY: "auto",
         scrollbarGutter: "stable",
         scrollbarWidth: "thin",
-        scrollbarColor: (theme) => `${alpha(theme.palette.primary.main, 0.5)} transparent`,
+        scrollbarColor: (theme) =>
+          `${alpha(theme.palette.primary.main, 0.5)} transparent`,
         "&::-webkit-scrollbar": { width: 10 },
         "&::-webkit-scrollbar-track": { backgroundColor: "transparent" },
         "&::-webkit-scrollbar-thumb": {
