@@ -1,7 +1,3 @@
-def captured_in(body):
-    return {p["name"] for p in body["items"] if p["captured"]}
-
-
 class TestLogin:
     def test_login_returns_the_identity(self, client):
         response = client.post("/login", json={"username": "ash"})
@@ -48,18 +44,13 @@ class TestCaptureRequiresLogin:
     def test_release_is_401_when_anonymous(self, client):
         assert client.delete("/captures/Squirtle").status_code == 401
 
-    def test_anonymous_callers_see_nothing_captured(self, client, ash):
+    def test_anonymous_identity_is_unaffected_by_others_captures(self, client, ash):
         ash.post("/captures", json={"name": "Squirtle"})
 
-        assert captured_in(client.get("/pokemon").get_json()) == set()
+        assert client.get("/me").get_json()["captured"] == []
 
 
 class TestCapturing:
-    def test_capture_shows_up_in_the_listing(self, ash):
-        ash.post("/captures", json={"name": "Squirtle"})
-
-        assert captured_in(ash.get("/pokemon").get_json()) == {"Squirtle"}
-
     def test_capture_shows_up_in_me(self, ash):
         ash.post("/captures", json={"name": "Squirtle"})
 
@@ -78,7 +69,7 @@ class TestCapturing:
         response = ash.delete("/captures/Squirtle")
 
         assert response.get_json() == {"name": "Squirtle", "captured": False}
-        assert captured_in(ash.get("/pokemon").get_json()) == set()
+        assert ash.get("/me").get_json()["captured"] == []
 
     def test_releasing_something_uncaptured_is_not_an_error(self, ash):
         assert ash.delete("/captures/Squirtle").status_code == 200
@@ -109,7 +100,7 @@ class TestCapturing:
         capture the other. This is why captures key off name, not number."""
         ash.post("/captures", json={"name": "Charizard"})
 
-        assert captured_in(ash.get("/pokemon").get_json()) == {"Charizard"}
+        assert ash.get("/me").get_json()["captured"] == ["Charizard"]
 
 
 class TestUsersAreIsolated:
@@ -119,8 +110,8 @@ class TestUsersAreIsolated:
         ash.post("/captures", json={"name": "Squirtle"})
         misty.post("/captures", json={"name": "Bulbasaur"})
 
-        assert captured_in(ash.get("/pokemon").get_json()) == {"Squirtle"}
-        assert captured_in(misty.get("/pokemon").get_json()) == {"Bulbasaur"}
+        assert ash.get("/me").get_json()["captured"] == ["Squirtle"]
+        assert misty.get("/me").get_json()["captured"] == ["Bulbasaur"]
 
     def test_one_user_cannot_release_anothers_capture(self, ash, make_client):
         misty = make_client("misty")
@@ -140,16 +131,12 @@ class TestUsersAreIsolated:
         assert misty.get("/me").get_json()["captured"] == ["Squirtle"]
 
 
-class TestCapturesDoNotLeakIntoTheCache:
-    def test_a_capture_does_not_persist_into_the_shared_snapshot(
-        self, ash, client, make_client
-    ):
-        """`get_pokemon()` returns the cached list itself; annotating those dicts
-        in place would leak one user's captures to every other caller."""
+class TestPokemonListDoesNotExposeCaptureState:
+    """`/pokemon` is a shared, cacheable catalog; per-user capture state lives
+    only in `/me` so the list response never has to be computed per user."""
+
+    def test_pokemon_items_have_no_captured_key(self, ash):
         ash.post("/captures", json={"name": "Squirtle"})
-        ash.get("/pokemon")
+        body = ash.get("/pokemon").get_json()
 
-        assert captured_in(client.get("/pokemon").get_json()) == set()
-
-        misty = make_client("misty")
-        assert captured_in(misty.get("/pokemon").get_json()) == set()
+        assert all("captured" not in p for p in body["items"])

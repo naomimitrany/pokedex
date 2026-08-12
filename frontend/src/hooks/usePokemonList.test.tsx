@@ -20,7 +20,6 @@ function pokemon(number: number): Pokemon {
     speed: 50,
     generation: 1,
     legendary: false,
-    captured: false,
   };
 }
 

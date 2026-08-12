@@ -39,7 +39,6 @@ class TestDefaults:
             "speed": 50,
             "generation": 1,
             "legendary": False,
-            "captured": False,
         }
 
 

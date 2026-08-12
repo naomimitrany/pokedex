@@ -22,7 +22,6 @@ function pokemon(number: number, overrides: Partial<Pokemon> = {}): Pokemon {
     speed: 50,
     generation: 1,
     legendary: false,
-    captured: false,
     ...overrides,
   };
 }

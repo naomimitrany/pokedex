@@ -18,7 +18,6 @@ const bulbasaur: Pokemon = {
   speed: 45,
   generation: 1,
   legendary: false,
-  captured: false,
 };
 
 describe("PokemonCard", () => {

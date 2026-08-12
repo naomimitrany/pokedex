@@ -26,7 +26,6 @@ export type Pokemon = {
   speed: number;
   generation: number;
   legendary: boolean;
-  captured: boolean;
 };
 
 export type PokemonPage = {

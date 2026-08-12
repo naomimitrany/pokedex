@@ -104,7 +104,6 @@ def list_pokemon():
             order=args.order,
             type_name=args.type_name,
             text=args.q,
-            captured_names=accounts.captured_names(_current_username()),
         )
     )
 

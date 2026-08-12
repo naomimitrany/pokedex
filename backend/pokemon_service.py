@@ -40,7 +40,6 @@ class PokemonService:
         order,
         type_name=None,
         text=None,
-        captured_names=frozenset(),
     ):
         results = self.get_pokemon()
 
@@ -52,10 +51,7 @@ class PokemonService:
 
         total_count = len(results)
         return {
-            "items": [
-                {**pokemon, "captured": pokemon["name"] in captured_names}
-                for pokemon in self.paginate(results, page, page_size)
-            ],
+            "items": self.paginate(results, page, page_size),
             "page": page,
             "page_size": page_size,
             "total_count": total_count,
