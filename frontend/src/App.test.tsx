@@ -103,4 +103,18 @@ describe("App", () => {
       expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ type: "Fire", page: 1 })),
     );
   });
+
+  it("navigates to the captured page via the bag FAB", async () => {
+    vi.spyOn(accountsApi, "fetchMe").mockResolvedValue({ username: "ash", captured: [] });
+    vi.spyOn(accountsApi, "fetchCaptures").mockResolvedValue([]);
+    vi.spyOn(pokemonApi, "fetchPokemonPage").mockResolvedValue(page([pokemon(1)], 1));
+    const user = userEvent.setup();
+    renderWithProviders(<App />);
+    await waitFor(() => expect(screen.getByText("Mon1")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("link", { name: /view captured pok/i }));
+
+    await waitFor(() => expect(screen.getByText("Your bag is empty")).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: /view captured pok/i })).not.toBeInTheDocument();
+  });
 });

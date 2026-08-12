@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 import Box from "@mui/material/Box";
 import { alpha } from "@mui/material/styles";
+import { BagFab } from "./components/pokedex/BagFab";
 import { NavBar } from "./components/navbar/NavBar";
+import { CapturedPage } from "./pages/CapturedPage";
 import { PokedexPage } from "./pages/PokedexPage";
 
 const App = () => (
@@ -32,8 +34,10 @@ const App = () => (
     >
       <Routes>
         <Route path="/" element={<PokedexPage />} />
+        <Route path="/captured" element={<CapturedPage />} />
       </Routes>
     </Box>
+    <BagFab />
   </Box>
 );
 
